@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -65,7 +65,8 @@ interface SidebarItemProps {
 }
 
 function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
-  const isActive = window.location.pathname === path;
+  const location = useLocation();
+  const isActive = location.pathname === path;
   
   return (
     <Link
