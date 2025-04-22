@@ -3,7 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { createClient } from '@supabase/supabase-js';
 import Index from "./pages/Index";
 import GBOs from "./pages/GBOs";
 import Operators from "./pages/Operators";
@@ -11,29 +13,69 @@ import Planning from "./pages/Planning";
 import History from "./pages/History";
 import Documents from "./pages/Documents";
 import Settings from "./pages/Settings";
+import ActivityAnalysis from "./pages/ActivityAnalysis";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+
+// Initialize Supabase client (replace with your URLs)
+const supabaseUrl = 'https://your-supabase-url.supabase.co';
+const supabaseAnonKey = 'your-supabase-anon-key';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/gbos" element={<GBOs />} />
-          <Route path="/operators" element={<Operators />} />
-          <Route path="/planning" element={<Planning />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check for active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Authentication route */}
+            <Route path="/auth" element={session ? <Navigate to="/" /> : <Auth />} />
+
+            {/* Protected routes */}
+            <Route path="/" element={session ? <Index /> : <Navigate to="/auth" />} />
+            <Route path="/gbos" element={session ? <GBOs /> : <Navigate to="/auth" />} />
+            <Route path="/operators" element={session ? <Operators /> : <Navigate to="/auth" />} />
+            <Route path="/planning" element={session ? <Planning /> : <Navigate to="/auth" />} />
+            <Route path="/history" element={session ? <History /> : <Navigate to="/auth" />} />
+            <Route path="/documents" element={session ? <Documents /> : <Navigate to="/auth" />} />
+            <Route path="/settings" element={session ? <Settings /> : <Navigate to="/auth" />} />
+            <Route path="/activity-analysis" element={session ? <ActivityAnalysis /> : <Navigate to="/auth" />} />
+            
+            {/* Fallback route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
