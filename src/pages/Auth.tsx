@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@supabase/supabase-js';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Use os mesmos valores de fallback que no App.tsx
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-supabase-url.supabase.co';
@@ -24,12 +26,47 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
+  const [supabaseConnected, setSupabaseConnected] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Verificar se conseguimos conectar ao Supabase
+  useEffect(() => {
+    const checkSupabaseConnection = async () => {
+      try {
+        // Tente uma operação simples para verificar a conexão
+        await supabase.auth.getSession();
+        setSupabaseConnected(true);
+      } catch (error) {
+        console.error('Erro ao conectar ao Supabase:', error);
+        setSupabaseConnected(false);
+      }
+    };
+
+    checkSupabaseConnection();
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Se estamos em modo de demonstração ou não conseguimos conectar ao Supabase
+    if (demoMode || !supabaseConnected) {
+      // Simule um atraso para parecer uma chamada de API real
+      setTimeout(() => {
+        toast({
+          title: isLogin ? "Login de demonstração realizado!" : "Cadastro de demonstração realizado!",
+          description: "Este é um modo de demonstração sem conexão com o backend.",
+        });
+        
+        // Em modo de demonstração, sempre redirecione para o dashboard
+        navigate('/');
+        setLoading(false);
+      }, 1000);
+      
+      return;
+    }
 
     try {
       if (isLogin) {
@@ -66,14 +103,29 @@ const Auth = () => {
         setIsLogin(true);
       }
     } catch (error: any) {
+      console.error('Erro na autenticação:', error);
+      
       toast({
         title: "Erro",
         description: error.message || "Ocorreu um erro durante a autenticação.",
         variant: "destructive",
       });
+      
+      // Se tivermos um erro de conexão, sugerimos o modo de demonstração
+      if (error.message === 'Failed to fetch') {
+        setSupabaseConnected(false);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const enableDemoMode = () => {
+    setDemoMode(true);
+    toast({
+      title: "Modo de demonstração ativado",
+      description: "Você pode fazer login sem conexão com o backend.",
+    });
   };
 
   return (
@@ -89,6 +141,19 @@ const Auth = () => {
               : 'Preencha os campos abaixo para criar uma nova conta.'}
           </CardDescription>
         </CardHeader>
+        
+        {!supabaseConnected && (
+          <div className="px-6 pb-2">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Erro de conexão</AlertTitle>
+              <AlertDescription>
+                Não foi possível conectar ao servidor. Você pode usar o modo de demonstração para testar a aplicação.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+        
         <form onSubmit={handleAuth}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -113,10 +178,26 @@ const Auth = () => {
                 required
               />
             </div>
+            
+            {!supabaseConnected && !demoMode && (
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full"
+                onClick={enableDemoMode}
+              >
+                Usar modo de demonstração
+              </Button>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Processando...' : isLogin ? 'Entrar' : 'Cadastrar'}
+              {loading 
+                ? 'Processando...' 
+                : demoMode 
+                  ? (isLogin ? 'Entrar (Demo)' : 'Cadastrar (Demo)') 
+                  : (isLogin ? 'Entrar' : 'Cadastrar')
+              }
             </Button>
             <Button 
               type="button" 

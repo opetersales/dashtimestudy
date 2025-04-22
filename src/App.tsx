@@ -29,27 +29,52 @@ const queryClient = new QueryClient();
 const App = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
-    // Check for active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    // Verificar se o modo de demonstração está ativado
+    const storedDemoMode = localStorage.getItem('demoMode') === 'true';
+    if (storedDemoMode) {
+      setDemoMode(true);
       setLoading(false);
-    });
+      return;
+    }
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
+    // Check for active session
+    const checkSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        
+        // Listener for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          (_event, session) => {
+            setSession(session);
+          }
+        );
+
+        return () => subscription.unsubscribe();
+      } catch (error) {
+        console.error('Erro ao verificar sessão:', error);
+        // Se não conseguir verificar a sessão, habilita o modo de demonstração
+        if (window.location.pathname !== '/auth') {
+          localStorage.setItem('demoMode', 'true');
+          setDemoMode(true);
+        }
+      } finally {
+        setLoading(false);
       }
-    );
+    };
 
-    return () => subscription.unsubscribe();
+    checkSession();
   }, []);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
   }
+
+  // Se estiver em modo de demonstração, considere o usuário como autenticado
+  const isAuthenticated = session || demoMode;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -59,17 +84,17 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             {/* Authentication route */}
-            <Route path="/auth" element={session ? <Navigate to="/" /> : <Auth />} />
+            <Route path="/auth" element={isAuthenticated ? <Navigate to="/" /> : <Auth />} />
 
             {/* Protected routes */}
-            <Route path="/" element={session ? <Index /> : <Navigate to="/auth" />} />
-            <Route path="/gbos" element={session ? <GBOs /> : <Navigate to="/auth" />} />
-            <Route path="/operators" element={session ? <Operators /> : <Navigate to="/auth" />} />
-            <Route path="/planning" element={session ? <Planning /> : <Navigate to="/auth" />} />
-            <Route path="/history" element={session ? <History /> : <Navigate to="/auth" />} />
-            <Route path="/documents" element={session ? <Documents /> : <Navigate to="/auth" />} />
-            <Route path="/settings" element={session ? <Settings /> : <Navigate to="/auth" />} />
-            <Route path="/activity-analysis" element={session ? <ActivityAnalysis /> : <Navigate to="/auth" />} />
+            <Route path="/" element={isAuthenticated ? <Index /> : <Navigate to="/auth" />} />
+            <Route path="/gbos" element={isAuthenticated ? <GBOs /> : <Navigate to="/auth" />} />
+            <Route path="/operators" element={isAuthenticated ? <Operators /> : <Navigate to="/auth" />} />
+            <Route path="/planning" element={isAuthenticated ? <Planning /> : <Navigate to="/auth" />} />
+            <Route path="/history" element={isAuthenticated ? <History /> : <Navigate to="/auth" />} />
+            <Route path="/documents" element={isAuthenticated ? <Documents /> : <Navigate to="/auth" />} />
+            <Route path="/settings" element={isAuthenticated ? <Settings /> : <Navigate to="/auth" />} />
+            <Route path="/activity-analysis" element={isAuthenticated ? <ActivityAnalysis /> : <Navigate to="/auth" />} />
             
             {/* Fallback route */}
             <Route path="*" element={<NotFound />} />
