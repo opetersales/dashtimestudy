@@ -12,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Edit, Trash2, FileExcel, Plus } from 'lucide-react';
+import { CalendarIcon, Edit, Trash2, FileText, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ActivityCharts } from '@/components/activity/ActivityCharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,6 +34,29 @@ interface Activity {
   cycleTime: number;
   fatigue: number;
   adjustedCycleTime: number;
+}
+
+// Define types for the chart data
+interface StationData {
+  station: string;
+  totalTime: number;
+  adjustedTime: number;
+}
+
+interface UphData {
+  station: string;
+  uph: number;
+}
+
+interface UpphData {
+  station: string;
+  upph: number;
+}
+
+interface ChartData {
+  stationData: StationData[];
+  uphData: UphData[];
+  upphData: UpphData[];
 }
 
 const ActivityAnalysis: React.FC = () => {
@@ -220,8 +243,8 @@ const ActivityAnalysis: React.FC = () => {
   }, [isDarkTheme]);
 
   // Calculate data for charts
-  const getChartData = () => {
-    const stationData = {};
+  const getChartData = (): ChartData => {
+    const stationData: Record<string, { totalTime: number; adjustedTime: number; activities: number }> = {};
     
     activities.forEach(activity => {
       const station = activity.station;
@@ -481,7 +504,7 @@ const ActivityAnalysis: React.FC = () => {
                 onClick={handleExportToExcel} 
                 disabled={activities.length === 0}
               >
-                <FileExcel className="mr-2 h-4 w-4" />
+                <FileText className="mr-2 h-4 w-4" />
                 Exportar para Excel
               </Button>
             </CardHeader>
