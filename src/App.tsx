@@ -17,9 +17,9 @@ import ActivityAnalysis from "./pages/ActivityAnalysis";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
-// Initialize Supabase client (replace with your URLs)
-const supabaseUrl = 'https://your-supabase-url.supabase.co';
-const supabaseAnonKey = 'your-supabase-anon-key';
+// Initialize Supabase client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const queryClient = new QueryClient();
