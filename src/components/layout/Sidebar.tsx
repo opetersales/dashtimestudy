@@ -12,7 +12,8 @@ import {
   ChevronRight,
   File,
   Clock,
-  Calendar
+  Calendar,
+  LucideIcon
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -57,7 +58,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 }
 
 interface SidebarItemProps {
-  icon: React.FC<{ size?: number }>;
+  icon: LucideIcon;
   label: string;
   path: string;
   collapsed: boolean;
