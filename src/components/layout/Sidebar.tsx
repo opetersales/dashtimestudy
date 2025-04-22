@@ -13,7 +13,6 @@ import {
   File,
   Clock,
   Calendar,
-  BarChart2,
   LucideIcon
 } from 'lucide-react';
 
@@ -49,7 +48,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <SidebarItem icon={Calendar} label="Planejamento" path="/planning" collapsed={collapsed} />
         <SidebarItem icon={Clock} label="Histórico" path="/history" collapsed={collapsed} />
         <SidebarItem icon={File} label="Documentos" path="/documents" collapsed={collapsed} />
-        <SidebarItem icon={BarChart2} label="Análise de Atividades" path="/activity-analysis" collapsed={collapsed} />
       </nav>
       
       <div className="p-3 border-t border-sidebar-border">
