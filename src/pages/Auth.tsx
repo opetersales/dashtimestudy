@@ -8,10 +8,16 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@supabase/supabase-js';
 
-// Substitua estas variáveis pelas suas credenciais reais do Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Use os mesmos valores de fallback que no App.tsx
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-supabase-url.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+
+// Instancie o cliente Supabase
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Adicione logs para depuração
+console.log('Supabase URL:', supabaseUrl);
+console.log('Supabase URL type:', typeof supabaseUrl);
 
 const Auth = () => {
   const [email, setEmail] = useState('');
