@@ -4,8 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { BasePage } from '@/components/layout/BasePage';
 import { AtividadeForm } from '@/components/atividades/AtividadeForm';
 import { AtividadesTable } from '@/components/atividades/AtividadesTable';
-import { AtividadesCharts } from '@/components/atividades/AtividadesCharts';
 import { GboDataForm } from '@/components/atividades/GboDataForm';
+import { GboDashboard } from '@/components/gbo/GboDashboard';
 import { GboCard } from '@/components/gbo/GboCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +14,7 @@ import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorag
 import { Atividade, GboData } from '@/types/atividades';
 import { GBO } from '@/utils/types';
 import { useToast } from '@/components/ui/use-toast';
+import { WorkstationList } from '@/components/workstation/WorkstationList';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,12 @@ const GboDetail = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [atividadeToDelete, setAtividadeToDelete] = useState<string | null>(null);
 
+  // Função para obter o nome do usuário atual
+  const getUserName = () => {
+    const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
+    return userData.name;
+  };
+
   useEffect(() => {
     // Load GBO data
     const gbos = loadFromLocalStorage<GBO[]>('gboList', []);
@@ -59,7 +66,7 @@ const GboDetail = () => {
         cliente: currentGbo.name,
         modelo: currentGbo.productModel,
         data: new Date().toISOString().split('T')[0],
-        autor: 'Admin',
+        autor: getUserName(),
         horasTrabalhadas: 8,
         turno: 'Manhã',
       });
@@ -75,6 +82,22 @@ const GboDetail = () => {
     }
   }, [id, navigate, toast]);
 
+  // Função para registrar histórico
+  const updateHistory = (action: string, details: string) => {
+    const history = loadFromLocalStorage<any[]>('history', []);
+    const newHistoryItem = {
+      id: `hist-${Date.now()}`,
+      name: gbo?.name || 'GBO',
+      version: gbo?.version || '1.0',
+      date: new Date().toISOString(),
+      user: getUserName(),
+      action: action === 'create' ? 'create' : action === 'delete' ? 'archive' : 'update',
+      details,
+    };
+    history.unshift(newHistoryItem);
+    saveToLocalStorage('history', history);
+  };
+
   const handleGboDataSubmit = (data: GboData) => {
     setGboData(data);
     saveToLocalStorage(`gboData-${id}`, data);
@@ -82,6 +105,7 @@ const GboDetail = () => {
       title: "Dados atualizados",
       description: "Dados do GBO foram salvos com sucesso.",
     });
+    updateHistory('update', 'Atualização dos dados gerais do GBO');
   };
 
   const handleAtividadeSubmit = (atividade: Atividade) => {
@@ -99,6 +123,7 @@ const GboDetail = () => {
         title: "Atividade atualizada",
         description: "A atividade foi atualizada com sucesso.",
       });
+      updateHistory('update', `Atualização da atividade: ${atividade.descricao}`);
     } else {
       // Add new activity
       updatedAtividades = [...atividades, atividade];
@@ -106,6 +131,7 @@ const GboDetail = () => {
         title: "Atividade adicionada",
         description: "Nova atividade adicionada com sucesso.",
       });
+      updateHistory('create', `Criação de nova atividade: ${atividade.descricao}`);
     }
     
     setAtividades(updatedAtividades);
@@ -123,6 +149,7 @@ const GboDetail = () => {
 
   const handleDeleteAtividade = () => {
     if (atividadeToDelete) {
+      const atividadeToRemove = atividades.find(a => a.id === atividadeToDelete);
       const updatedAtividades = atividades.filter(a => a.id !== atividadeToDelete);
       setAtividades(updatedAtividades);
       saveToLocalStorage(`atividades-${id}`, updatedAtividades);
@@ -130,10 +157,64 @@ const GboDetail = () => {
         title: "Atividade excluída",
         description: "A atividade foi removida com sucesso.",
       });
+      updateHistory('delete', `Remoção da atividade: ${atividadeToRemove?.descricao || 'Desconhecida'}`);
       setDeleteDialogOpen(false);
       setAtividadeToDelete(null);
     }
   };
+
+  // Criar workstations a partir das atividades
+  const workstations = React.useMemo(() => {
+    if (!atividades.length) return [];
+    
+    const postoMap = new Map();
+    
+    atividades.forEach(atividade => {
+      const posto = postoMap.get(atividade.posto) || {
+        id: `ws-${atividade.posto}`,
+        name: atividade.posto,
+        position: parseInt(atividade.posto.replace(/\D/g, '')) || 0,
+        activities: [],
+        cycleTime: 0,
+        efficiency: 0,
+        status: 'normal'
+      };
+      
+      posto.activities.push({
+        id: atividade.id,
+        name: atividade.descricao,
+        timeRequired: atividade.cycleTimeAjustado
+      });
+      
+      posto.cycleTime += atividade.cycleTimeAjustado;
+      
+      postoMap.set(atividade.posto, posto);
+    });
+    
+    // Calcular eficiência e status
+    const tempoCicloMaximo = Math.max(...Array.from(postoMap.values()).map(p => p.cycleTime));
+    
+    return Array.from(postoMap.values()).map(posto => {
+      const efficiency = tempoCicloMaximo > 0 ? posto.cycleTime / tempoCicloMaximo : 1;
+      
+      let status: 'optimal' | 'normal' | 'warning' | 'bottleneck';
+      if (efficiency > 0.95) {
+        status = 'bottleneck';
+      } else if (efficiency > 0.85) {
+        status = 'warning';
+      } else if (efficiency < 0.6) {
+        status = 'normal';
+      } else {
+        status = 'optimal';
+      }
+      
+      return {
+        ...posto,
+        efficiency,
+        status
+      };
+    });
+  }, [atividades]);
 
   if (!gbo) {
     return null; // Loading state
@@ -155,12 +236,17 @@ const GboDetail = () => {
         <GboCard gbo={gbo} />
       </div>
 
-      <Tabs defaultValue="dados" className="space-y-4">
+      <Tabs defaultValue="dashboard" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="dados">Dados Gerais</TabsTrigger>
           <TabsTrigger value="atividades">Atividades</TabsTrigger>
-          <TabsTrigger value="analise">Análise e Gráficos</TabsTrigger>
+          <TabsTrigger value="postos">Postos de Trabalho</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="dashboard" className="space-y-4">
+          <GboDashboard gbo={gbo} atividades={atividades} />
+        </TabsContent>
         
         <TabsContent value="dados" className="space-y-4">
           <GboDataForm 
@@ -181,10 +267,15 @@ const GboDetail = () => {
           />
         </TabsContent>
         
-        <TabsContent value="analise" className="space-y-4">
-          <AtividadesCharts 
-            atividades={atividades} 
-            horasTrabalhadas={gboData.horasTrabalhadas}
+        <TabsContent value="postos" className="space-y-4">
+          <WorkstationList 
+            workstations={workstations}
+            onWorkstationClick={(ws) => {
+              toast({
+                title: `${ws.name}`,
+                description: `Tempo de ciclo: ${ws.cycleTime.toFixed(1)}s, Eficiência: ${Math.round(ws.efficiency * 100)}%`,
+              });
+            }}
           />
         </TabsContent>
       </Tabs>

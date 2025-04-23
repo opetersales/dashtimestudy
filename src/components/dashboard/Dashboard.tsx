@@ -3,56 +3,89 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProductionLineChart } from '@/components/charts/ProductionLineChart';
-import { GboCard } from '@/components/gbo/GboCard';
-import { generateMockGBOs, generatePerformanceData, GBO } from '@/utils/types';
+import { loadFromLocalStorage } from '@/services/localStorage';
+import { GBO } from '@/utils/types';
 
 export function Dashboard() {
-  const [gbos] = React.useState<GBO[]>(generateMockGBOs(4));
-  const [performanceData] = React.useState(generatePerformanceData());
+  // Carregar GBOs do localStorage
+  const gbos = loadFromLocalStorage<GBO[]>('gboList', []);
+  const activeGbos = gbos.filter(gbo => gbo.status === 'active');
+  const draftGbos = gbos.filter(gbo => gbo.status === 'draft');
+  const archivedGbos = gbos.filter(gbo => gbo.status === 'archived');
+  
+  // Gerar dados de desempenho com base nas GBOs
+  const performanceData = React.useMemo(() => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return date.toISOString().split('T')[0];
+    });
+    
+    // Para cada linha de produção nos GBOs, gere dados de desempenho
+    const productionLines = [...new Set(gbos.map(gbo => gbo.productionLine))];
+    
+    return last7Days.map(date => {
+      const dataPoint: Record<string, any> = { date };
+      productionLines.forEach(line => {
+        const lineGbos = gbos.filter(gbo => gbo.productionLine === line);
+        if (lineGbos.length) {
+          const avgEfficiency = lineGbos.reduce((sum, gbo) => sum + gbo.efficiency, 0) / lineGbos.length;
+          dataPoint[line] = Math.round(avgEfficiency * 100);
+        }
+      });
+      return dataPoint;
+    });
+  }, [gbos]);
+
+  // Calcular métricas gerais
+  const totalOperators = activeGbos.reduce((sum, gbo) => sum + gbo.operatorCount, 0);
+  const avgEfficiency = gbos.length > 0 
+    ? gbos.reduce((sum, gbo) => sum + gbo.efficiency, 0) / gbos.length
+    : 0;
+  
+  // Identificar gargalos (postos de trabalho com eficiência baixa)
+  const bottlenecks = activeGbos.length > 0 
+    ? Math.floor(activeGbos.length * 0.2) + 1 // Simular ~20% dos GBOs com gargalos
+    : 0;
+  
+  // Calcular tendência de eficiência (simulada)
+  const efficiencyTrend = (Math.random() * 8 - 4).toFixed(1);
   
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard 
           title="Total de GBOs" 
-          value="24" 
-          description="7 ativos, 12 rascunhos, 5 arquivados"
-          trend={8}
+          value={gbos.length.toString()} 
+          description={`${activeGbos.length} ativos, ${draftGbos.length} rascunhos, ${archivedGbos.length} arquivados`}
+          trend={Math.round((gbos.length - 20) / 20 * 100)} // Simulando tendência
         />
         <MetricCard 
           title="Eficiência Média" 
-          value="78%" 
-          description="Melhora de 3% em relação ao mês anterior"
-          trend={3}
+          value={`${Math.round(avgEfficiency * 100)}%`} 
+          description="Baseado em todos os GBOs ativos"
+          trend={Number(efficiencyTrend)}
         />
         <MetricCard 
           title="Gargalos Identificados" 
-          value="5" 
-          description="2 críticos, 3 moderados"
+          value={bottlenecks.toString()} 
+          description={`${Math.ceil(bottlenecks / 3)} críticos, ${bottlenecks - Math.ceil(bottlenecks / 3)} moderados`}
           trend={-2}
         />
         <MetricCard 
           title="Operadores Ativos" 
-          value="32" 
-          description="12 com certificação completa"
-          trend={0}
+          value={totalOperators.toString()} 
+          description={`${Math.floor(totalOperators * 0.4)} com certificação completa`}
+          trend={Math.round(Math.random() * 6 - 3)}
         />
       </div>
 
       <Tabs defaultValue="performance" className="space-y-4">
         <TabsList>
           <TabsTrigger value="performance">Desempenho</TabsTrigger>
-          <TabsTrigger value="recent">GBOs Recentes</TabsTrigger>
         </TabsList>
         <TabsContent value="performance" className="space-y-4">
           <ProductionLineChart data={performanceData} />
-        </TabsContent>
-        <TabsContent value="recent">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {gbos.map((gbo) => (
-              <GboCard key={gbo.id} gbo={gbo} />
-            ))}
-          </div>
         </TabsContent>
       </Tabs>
     </div>

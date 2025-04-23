@@ -5,7 +5,6 @@ import Documents from './pages/Documents';
 import GBOs from './pages/GBOs';
 import GboDetail from './pages/GboDetail';
 import Planning from './pages/Planning';
-import AnaliseAtividades from './pages/AnaliseAtividades';
 import Operators from './pages/Operators';
 import Settings from './pages/Settings';
 import History from './pages/History';
@@ -20,7 +19,6 @@ function App() {
       <Route path="/gbos" element={<GBOs />} />
       <Route path="/gbo/:id" element={<GboDetail />} />
       <Route path="/planning" element={<Planning />} />
-      <Route path="/analise" element={<AnaliseAtividades />} />
       <Route path="/operators" element={<Operators />} />
       <Route path="/history" element={<History />} />
       <Route path="/settings" element={<Settings />} />
