@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { FileText, Pencil, Trash2 } from 'lucide-react';
-import { Atividade } from '@/pages/AnaliseAtividades';
+import { Atividade } from '@/types/atividades';
 import * as XLSX from 'xlsx';
 
 interface AtividadesTableProps {

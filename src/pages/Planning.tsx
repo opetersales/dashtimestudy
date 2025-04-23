@@ -182,7 +182,7 @@ const Planning = () => {
       case 'pending':
         return 'secondary';
       case 'completed':
-        return 'success';
+        return 'outline'; // Changed from 'success' to 'outline'
       case 'canceled':
         return 'destructive';
       default:
