@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +23,7 @@ import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorag
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Eye, Download, Trash2, File, FileText, Upload } from 'lucide-react';
+import { Search, Plus, Eye, Download, Trash2, File, FileText, Pencil } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface Document {
@@ -52,11 +51,9 @@ const Documents = () => {
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Load documents from localStorage
   const [documents, setDocuments] = useState<Document[]>(() => {
     const savedDocuments = loadFromLocalStorage<Document[]>('documentsList', []);
     if (savedDocuments.length === 0) {
-      // Generate mock data
       const today = new Date();
       const mockDocuments: Document[] = [
         {
@@ -119,7 +116,6 @@ const Documents = () => {
     return savedDocuments;
   });
 
-  // Filter documents based on search
   const filteredDocuments = documents.filter(doc => 
     searchQuery === '' || 
     doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -127,7 +123,6 @@ const Documents = () => {
     (doc.tags && doc.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
   );
   
-  // Handle document form submission
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -139,14 +134,12 @@ const Documents = () => {
     const relatedTo = formData.get('relatedTo') as string;
     const status = formData.get('status') as Document['status'];
     
-    // Parse tags from comma-separated string
     const tagsInput = formData.get('tags') as string;
     const tags = tagsInput ? 
       tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag !== '') :
       [];
     
     if (documentToEdit) {
-      // Update existing document
       const updatedDocuments = documents.map(doc => 
         doc.id === documentToEdit.id 
           ? {
@@ -171,7 +164,6 @@ const Documents = () => {
         description: "O documento foi atualizado com sucesso.",
       });
     } else {
-      // Create new document
       const newDocument: Document = {
         id: `doc-${Date.now()}`,
         title,
@@ -179,7 +171,7 @@ const Documents = () => {
         description,
         content,
         relatedTo,
-        createdBy: "Admin", // In a real app, this would be the current user
+        createdBy: "Admin",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         version: "1.0",
@@ -201,25 +193,21 @@ const Documents = () => {
     setDocumentToEdit(null);
   };
   
-  // Handle document edit
   const handleEditDocument = (doc: Document) => {
     setDocumentToEdit(doc);
     setIsFormOpen(true);
   };
   
-  // Handle document view
   const handleViewDocument = (doc: Document) => {
     setDocumentToView(doc);
     setIsViewOpen(true);
   };
   
-  // Confirm document delete
   const confirmDeleteDocument = (id: string) => {
     setDocumentToDelete(id);
     setDeleteDialogOpen(true);
   };
   
-  // Handle document delete
   const handleDeleteDocument = () => {
     if (documentToDelete) {
       const updatedDocuments = documents.filter(doc => doc.id !== documentToDelete);
@@ -236,7 +224,6 @@ const Documents = () => {
     }
   };
   
-  // Function to export documents to Excel
   const handleExportToExcel = () => {
     const data = documents.map(doc => ({
       Título: doc.title,
@@ -259,16 +246,16 @@ const Documents = () => {
     const ws = XLSX.utils.json_to_sheet(data);
     
     const wscols = [
-      { wch: 30 }, // Título
-      { wch: 15 }, // Tipo
-      { wch: 40 }, // Descrição
-      { wch: 15 }, // Criado por
-      { wch: 15 }, // Data de Criação
-      { wch: 15 }, // Última Atualização
-      { wch: 10 }, // Versão
-      { wch: 15 }, // Status
-      { wch: 20 }, // Relacionado a
-      { wch: 30 }, // Tags
+      { wch: 30 },
+      { wch: 15 },
+      { wch: 40 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 20 },
+      { wch: 30 },
     ];
     ws['!cols'] = wscols;
     
@@ -278,7 +265,6 @@ const Documents = () => {
     XLSX.writeFile(wb, 'documentos.xlsx');
   };
   
-  // Get type display name
   const getTypeDisplayName = (type: string) => {
     switch (type) {
       case 'manual': return 'Manual';
@@ -290,7 +276,6 @@ const Documents = () => {
     }
   };
   
-  // Get status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'draft':
@@ -306,7 +291,6 @@ const Documents = () => {
     }
   };
   
-  // Get document icon
   const getDocumentIcon = (type: string) => {
     switch (type) {
       case 'manual': 
@@ -324,7 +308,6 @@ const Documents = () => {
     }
   };
 
-  // Add new document form
   const addNewDocument = () => {
     setDocumentToEdit(null);
     setIsFormOpen(true);
@@ -565,7 +548,7 @@ const Documents = () => {
                   {getStatusBadge(documentToView.status)}
                 </div>
               )}
-            </DialogHeader>
+            </DialogTitle>
           </DialogHeader>
           
           {documentToView && (
