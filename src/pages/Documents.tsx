@@ -23,7 +23,7 @@ import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorag
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Eye, Download, Trash2, File, FileText, Pencil } from 'lucide-react';
+import { Search, Plus, Eye, Download, Trash2, File, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface Document {
@@ -643,5 +643,3 @@ const Documents = () => {
 };
 
 export default Documents;
-
-import { Pencil } from 'lucide-react';
