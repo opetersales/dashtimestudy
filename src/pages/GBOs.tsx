@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BasePage } from '@/components/layout/BasePage';
 import { GboCard } from '@/components/gbo/GboCard';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Filter, Search } from 'lucide-react';
+import { Plus, Filter, Search, Pencil, Trash2 } from 'lucide-react';
 import { GBO } from '@/utils/types';
 import { GboForm } from '@/components/gbo/GboForm';
 import { useToast } from '@/components/ui/use-toast';
@@ -29,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const GBOs = () => {
+  const navigate = useNavigate();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [gboToEdit, setGboToEdit] = useState<GBO | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,6 +161,10 @@ const GBOs = () => {
     setGboToEdit(null);
   };
 
+  const handleViewGboDetails = (id: string) => {
+    navigate(`/gbo/${id}`);
+  };
+
   return (
     <BasePage title="Gerenciamento de GBOs">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -208,13 +214,19 @@ const GBOs = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredGbos.map((gbo) => (
             <div key={gbo.id} className="relative group">
-              <GboCard gbo={gbo} />
+              <GboCard 
+                gbo={gbo} 
+                onClick={() => handleViewGboDetails(gbo.id)}
+              />
               
               <div className="absolute top-2 right-2 flex opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  onClick={() => handleEdit(gbo)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(gbo);
+                  }}
                   className="bg-background/80 backdrop-blur-sm"
                 >
                   <Pencil className="h-4 w-4" />
@@ -223,7 +235,10 @@ const GBOs = () => {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  onClick={() => confirmDelete(gbo.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    confirmDelete(gbo.id);
+                  }}
                   className="bg-background/80 backdrop-blur-sm text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -273,5 +288,3 @@ const GBOs = () => {
 };
 
 export default GBOs;
-
-import { Pencil, Trash2 } from 'lucide-react';

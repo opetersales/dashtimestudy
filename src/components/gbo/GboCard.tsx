@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ interface GboCardProps {
 }
 
 export function GboCard({ gbo, onClick, isActive = false }: GboCardProps) {
+  const navigate = useNavigate();
+  
   const statusColors = {
     draft: 'bg-muted text-muted-foreground',
     active: 'bg-success text-success-foreground',
@@ -30,6 +32,11 @@ export function GboCard({ gbo, onClick, isActive = false }: GboCardProps) {
     uphDifference >= 0 ? 'indicator-up' :
     uphDifference >= -10 ? 'indicator-neutral' :
     'indicator-down';
+
+  const handleViewDetails = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/gbo/${gbo.id}`);
+  };
 
   return (
     <Card 
@@ -81,11 +88,17 @@ export function GboCard({ gbo, onClick, isActive = false }: GboCardProps) {
             <span className="text-muted-foreground">Versão:</span> {gbo.version}
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="icon">
-              <Edit size={16} />
-            </Button>
-            <Button variant="ghost" size="icon">
+            {onClick && (
+              <Button variant="ghost" size="icon" onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}>
+                <Edit size={16} />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={handleViewDetails}>
               <ArrowRight size={16} />
+              <span className="sr-only">Ver detalhes</span>
             </Button>
           </div>
         </div>
