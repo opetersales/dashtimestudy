@@ -2,9 +2,15 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ProductionLineChart } from '@/components/charts/ProductionLineChart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { loadFromLocalStorage } from '@/services/localStorage';
 import { GBO } from '@/utils/types';
+
+interface PerformanceData {
+  label: string;
+  actual: number;
+  target: number;
+}
 
 export function Dashboard() {
   // Carregar GBOs do localStorage
@@ -15,26 +21,20 @@ export function Dashboard() {
   
   // Gerar dados de desempenho com base nas GBOs
   const performanceData = React.useMemo(() => {
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
-      return date.toISOString().split('T')[0];
-    });
-    
-    // Para cada linha de produção nos GBOs, gere dados de desempenho
-    const productionLines = [...new Set(gbos.map(gbo => gbo.productionLine))];
-    
-    return last7Days.map(date => {
-      const dataPoint: Record<string, any> = { date };
-      productionLines.forEach(line => {
-        const lineGbos = gbos.filter(gbo => gbo.productionLine === line);
-        if (lineGbos.length) {
-          const avgEfficiency = lineGbos.reduce((sum, gbo) => sum + gbo.efficiency, 0) / lineGbos.length;
-          dataPoint[line] = Math.round(avgEfficiency * 100);
-        }
-      });
-      return dataPoint;
-    });
+    // Usar os dados dos GBOs para gerar informações de desempenho
+    return gbos.slice(0, 7).map(gbo => ({
+      label: gbo.name,
+      actual: gbo.actualUPH,
+      target: gbo.targetUPH
+    }));
+  }, [gbos]);
+  
+  // Gerar dados de eficiência
+  const efficiencyData = React.useMemo(() => {
+    return gbos.slice(0, 7).map(gbo => ({
+      label: gbo.name,
+      value: Math.round(gbo.efficiency * 100)
+    }));
   }, [gbos]);
 
   // Calcular métricas gerais
@@ -82,10 +82,51 @@ export function Dashboard() {
 
       <Tabs defaultValue="performance" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="performance">Desempenho</TabsTrigger>
+          <TabsTrigger value="performance">Desempenho GBOs</TabsTrigger>
+          <TabsTrigger value="efficiency">Eficiência GBOs</TabsTrigger>
         </TabsList>
+        
         <TabsContent value="performance" className="space-y-4">
-          <ProductionLineChart data={performanceData} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Desempenho UPH por GBO</CardTitle>
+              <CardDescription>Comparação entre UPH alvo e UPH atual por GBO</CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={performanceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="target" name="UPH Alvo" fill="#8884d8" />
+                  <Bar dataKey="actual" name="UPH Atual" fill="#82ca9d" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="efficiency" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Eficiência por GBO</CardTitle>
+              <CardDescription>Porcentagem de eficiência para cada GBO</CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={efficiencyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="value" name="Eficiência (%)" stroke="#8884d8" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

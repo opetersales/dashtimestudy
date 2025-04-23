@@ -11,7 +11,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Search, Download, FileText, Filter } from 'lucide-react';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { Search, Download, Upload, FileText, Filter } from 'lucide-react';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -33,6 +41,11 @@ const Documents = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [filterType, setFilterType] = useState<string | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importTitle, setImportTitle] = useState('');
+  const [importType, setImportType] = useState<'gbo' | 'report' | 'manual' | 'other'>('report');
+  const [importDescription, setImportDescription] = useState('');
+  const [fileData, setFileData] = useState<File | null>(null);
 
   // Função para obter o nome do usuário atual
   const getUserName = () => {
@@ -40,8 +53,8 @@ const Documents = () => {
     return userData.name;
   };
   
-  // Carregar documentos fictícios
-  const [documents] = useState<Document[]>(() => {
+  // Carregar documentos
+  const [documents, setDocuments] = useState<Document[]>(() => {
     const savedDocs = loadFromLocalStorage<Document[]>('documents', null);
     if (savedDocs) return savedDocs;
     
@@ -163,6 +176,63 @@ const Documents = () => {
     // Registrar no histórico
     updateHistory('Exportação de documentos', `${selectedDocuments.length} documentos foram exportados`);
   };
+
+  // Importar documento
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFileData(e.target.files[0]);
+    }
+  };
+
+  const handleImportDocument = () => {
+    if (!fileData) {
+      toast({
+        title: "Nenhum arquivo selecionado",
+        description: "Por favor, selecione um arquivo para importar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!importTitle) {
+      toast({
+        title: "Título não informado",
+        description: "Por favor, informe um título para o documento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Criar novo documento
+    const newDocument: Document = {
+      id: `doc-${Date.now()}`,
+      title: importTitle,
+      type: importType,
+      createdAt: new Date().toISOString(),
+      createdBy: getUserName(),
+      description: importDescription || `Documento importado em ${format(new Date(), 'dd/MM/yyyy')}`,
+      size: `${(fileData.size / (1024 * 1024)).toFixed(1)} MB`
+    };
+
+    // Adicionar à lista de documentos
+    const updatedDocuments = [...documents, newDocument];
+    setDocuments(updatedDocuments);
+    saveToLocalStorage('documents', updatedDocuments);
+    
+    setIsImportDialogOpen(false);
+    setImportTitle('');
+    setImportType('report');
+    setImportDescription('');
+    setFileData(null);
+    
+    toast({
+      title: "Documento importado",
+      description: `O documento ${importTitle} foi importado com sucesso.`,
+    });
+    
+    // Registrar no histórico
+    updateHistory('Importação de documento', `O documento ${importTitle} foi importado`);
+  };
   
   // Função para registrar histórico
   const updateHistory = (action: string, details: string) => {
@@ -220,13 +290,19 @@ const Documents = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <Button
-          disabled={selectedDocuments.length === 0}
-          onClick={handleExportDocuments}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Exportar Selecionados
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importar Documento
+          </Button>
+          <Button
+            disabled={selectedDocuments.length === 0}
+            onClick={handleExportDocuments}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Exportar Selecionados
+          </Button>
+        </div>
       </div>
       
       <Card>
@@ -313,6 +389,82 @@ const Documents = () => {
           </div>
         </CardFooter>
       </Card>
+      
+      {/* Diálogo para importar documento */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Importar Documento</DialogTitle>
+            <DialogDescription>
+              Preencha as informações abaixo para importar um novo documento.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="title" className="text-sm font-medium">
+                Título
+              </label>
+              <Input
+                id="title"
+                value={importTitle}
+                onChange={(e) => setImportTitle(e.target.value)}
+                placeholder="Título do documento"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <label htmlFor="type" className="text-sm font-medium">
+                Tipo
+              </label>
+              <select 
+                id="type"
+                value={importType}
+                onChange={(e) => setImportType(e.target.value as any)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="gbo">GBO</option>
+                <option value="report">Relatório</option>
+                <option value="manual">Manual</option>
+                <option value="other">Outro</option>
+              </select>
+            </div>
+            
+            <div className="grid gap-2">
+              <label htmlFor="description" className="text-sm font-medium">
+                Descrição (opcional)
+              </label>
+              <Input
+                id="description"
+                value={importDescription}
+                onChange={(e) => setImportDescription(e.target.value)}
+                placeholder="Descrição do documento"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <label htmlFor="file" className="text-sm font-medium">
+                Arquivo
+              </label>
+              <Input
+                id="file"
+                type="file"
+                onChange={handleFileChange}
+                className="cursor-pointer"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleImportDocument}>
+              Importar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </BasePage>
   );
 };

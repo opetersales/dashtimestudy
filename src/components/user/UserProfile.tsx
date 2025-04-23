@@ -9,11 +9,12 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { User, UserRound, Upload } from 'lucide-react';
+import { User, UserRound, Upload, UserCog } from 'lucide-react';
 import { saveToLocalStorage, loadFromLocalStorage } from '@/services/localStorage';
 
 interface UserData {
@@ -40,7 +41,10 @@ export function UserProfile() {
   );
   const [selectedProfilePic, setSelectedProfilePic] = useState<string | null>(userData.profilePic);
   const [customImageUrl, setCustomImageUrl] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isProfilePicDialogOpen, setIsProfilePicDialogOpen] = useState(false);
+  const [isEditProfileDialogOpen, setIsEditProfileDialogOpen] = useState(false);
+  const [editName, setEditName] = useState(userData.name);
+  const [editEmail, setEditEmail] = useState(userData.email);
 
   const getInitials = (name: string) => {
     return name
@@ -62,7 +66,7 @@ export function UserProfile() {
     };
     setUserData(updatedUserData);
     saveToLocalStorage('userData', updatedUserData);
-    setIsDialogOpen(false);
+    setIsProfilePicDialogOpen(false);
     toast({
       title: "Foto de perfil atualizada",
       description: "Sua foto de perfil foi atualizada com sucesso.",
@@ -78,6 +82,25 @@ export function UserProfile() {
     if (value) {
       setSelectedProfilePic(value);
     }
+  };
+
+  const handleSaveProfile = () => {
+    const updatedUserData = {
+      ...userData,
+      name: editName,
+      email: editEmail
+    };
+    setUserData(updatedUserData);
+    saveToLocalStorage('userData', updatedUserData);
+    setIsEditProfileDialogOpen(false);
+    
+    toast({
+      title: "Perfil atualizado",
+      description: "Seus dados de perfil foram atualizados com sucesso.",
+    });
+
+    // Atualiza o histórico
+    updateHistory('Atualização de perfil', 'O usuário atualizou seus dados pessoais');
   };
 
   const updateHistory = (action: string, details: string) => {
@@ -97,8 +120,9 @@ export function UserProfile() {
 
   return (
     <div className="flex items-center gap-2">
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger asChild>
+      {/* Menu do usuário */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative rounded-full h-10 w-10 p-0">
             <Avatar>
               {userData.profilePic ? (
@@ -108,7 +132,28 @@ export function UserProfile() {
               )}
             </Avatar>
           </Button>
-        </DialogTrigger>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => setIsEditProfileDialogOpen(true)}>
+            <User className="mr-2 h-4 w-4" />
+            Editar Perfil
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsProfilePicDialogOpen(true)}>
+            <UserCog className="mr-2 h-4 w-4" />
+            Alterar Foto
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Informações do usuário */}
+      <div className="text-sm">
+        <p className="font-medium">{userData.name}</p>
+        <p className="text-muted-foreground text-xs">{userData.email}</p>
+      </div>
+
+      {/* Diálogo para editar foto de perfil */}
+      <Dialog open={isProfilePicDialogOpen} onOpenChange={setIsProfilePicDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Foto de Perfil</DialogTitle>
@@ -163,7 +208,7 @@ export function UserProfile() {
           <DialogFooter className="mt-4">
             <Button 
               variant="outline" 
-              onClick={() => setIsDialogOpen(false)}
+              onClick={() => setIsProfilePicDialogOpen(false)}
             >
               Cancelar
             </Button>
@@ -176,10 +221,62 @@ export function UserProfile() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div className="text-sm">
-        <p className="font-medium">{userData.name}</p>
-        <p className="text-muted-foreground text-xs">{userData.email}</p>
-      </div>
+      
+      {/* Diálogo para editar dados do perfil */}
+      <Dialog open={isEditProfileDialogOpen} onOpenChange={setIsEditProfileDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Perfil</DialogTitle>
+            <DialogDescription>
+              Atualize suas informações pessoais abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="name" className="text-sm font-medium">
+                Nome
+              </label>
+              <Input
+                id="name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Seu nome"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                E-mail
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="seu.email@exemplo.com"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditProfileDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveProfile}>
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+// Adicionar os componentes de dropdown que estavam faltando
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";

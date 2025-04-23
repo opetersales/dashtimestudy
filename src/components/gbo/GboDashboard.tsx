@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GBO } from '@/utils/types';
 import { Atividade } from '@/types/atividades';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, Legend, LineChart, Line, PieChart, Pie, Cell 
+} from 'recharts';
 import { EmptyChart } from '@/components/atividades/charts/EmptyChart';
 
 interface GboDashboardProps {
@@ -89,6 +92,42 @@ export function GboDashboard({ gbo, atividades }: GboDashboardProps) {
     }));
   }, [postosData]);
 
+  // Dados de desempenho da linha de produção
+  const productionLineData = React.useMemo(() => {
+    // Simular dados históricos por dia da semana (últimos 7 dias)
+    const daysOfWeek = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const today = new Date().getDay();
+    
+    return Array.from({ length: 7 }, (_, i) => {
+      const dayIndex = (today - 6 + i + 7) % 7;
+      const dayName = daysOfWeek[dayIndex];
+      
+      // Simular variação ao redor do UPH atual
+      const baseValue = gbo.actualUPH;
+      const randomVariation = (Math.random() * 20) - 10; // -10% a +10%
+      const actualUPH = Math.max(0, Math.round(baseValue + (baseValue * randomVariation / 100)));
+      
+      return {
+        name: dayName,
+        uph: actualUPH,
+        meta: gbo.targetUPH
+      };
+    });
+  }, [gbo.actualUPH, gbo.targetUPH]);
+
+  // Dados de eficiência da linha
+  const lineEfficiencyData = React.useMemo(() => {
+    // Calcular o total
+    const total = 100;
+    const efficiency = Math.round(gbo.efficiency * 100);
+    const inefficiency = total - efficiency;
+    
+    return [
+      { name: 'Eficiente', value: efficiency, color: '#4CAF50' },
+      { name: 'Perdas', value: inefficiency, color: '#FF5722' }
+    ];
+  }, [gbo.efficiency]);
+
   if (atividades.length === 0) {
     return (
       <EmptyChart />
@@ -125,6 +164,7 @@ export function GboDashboard({ gbo, atividades }: GboDashboardProps) {
         <TabsList>
           <TabsTrigger value="tempos">Tempos por Posto</TabsTrigger>
           <TabsTrigger value="balanceamento">Balanceamento de Linha</TabsTrigger>
+          <TabsTrigger value="desempenho">Desempenho da Linha</TabsTrigger>
         </TabsList>
         
         <TabsContent value="tempos">
@@ -177,6 +217,64 @@ export function GboDashboard({ gbo, atividades }: GboDashboardProps) {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="desempenho">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Desempenho da Linha: {gbo.productionLine}</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={productionLineData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="uph" name="UPH Real" stroke="#8884d8" activeDot={{ r: 8 }} />
+                      <Line type="monotone" dataKey="meta" name="Meta UPH" stroke="#ff7300" strokeDasharray="5 5" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Eficiência da Linha: {gbo.productionLine}</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-72 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={lineEfficiencyData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {lineEfficiencyData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [`${value}%`]} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
