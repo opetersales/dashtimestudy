@@ -1,226 +1,449 @@
 
-import React from 'react';
-import { Header } from '@/components/layout/Header';
-import { Sidebar } from '@/components/layout/Sidebar';
+import React, { useState } from 'react';
+import { BasePage } from '@/components/layout/BasePage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { loadFromLocalStorage, saveToLocalStorage, removeFromLocalStorage } from '@/services/localStorage';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+
+interface AppSettings {
+  darkMode: boolean;
+  companyName: string;
+  companyLogo?: string;
+  defaultShift: 'morning' | 'afternoon' | 'night';
+  notificationsEnabled: boolean;
+  autoSaveInterval: number; // in minutes
+  showWelcomeScreen: boolean;
+  dateFormat: 'dd/MM/yyyy' | 'MM/dd/yyyy' | 'yyyy-MM-dd';
+  defaultWorkingHours: number;
+  defaultFatiguePercentage: number;
+}
 
 const Settings = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
-  const [isDarkTheme, setIsDarkTheme] = React.useState(false);
+  // Load settings from localStorage
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    return loadFromLocalStorage<AppSettings>('appSettings', {
+      darkMode: false,
+      companyName: 'Minha Empresa',
+      defaultShift: 'morning',
+      notificationsEnabled: true,
+      autoSaveInterval: 5,
+      showWelcomeScreen: true,
+      dateFormat: 'dd/MM/yyyy',
+      defaultWorkingHours: 8,
+      defaultFatiguePercentage: 10
+    });
+  });
+
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportData, setExportData] = useState('');
   const { toast } = useToast();
 
-  // Apply dark theme class to the html element
-  React.useEffect(() => {
-    if (isDarkTheme) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+  // Handle settings change
+  const handleSettingChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    const updatedSettings = { ...settings, [key]: value };
+    setSettings(updatedSettings);
+    saveToLocalStorage('appSettings', updatedSettings);
+
+    // If dark mode is changed, update the HTML class
+    if (key === 'darkMode') {
+      if (value) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
-  }, [isDarkTheme]);
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  const toggleTheme = () => {
-    setIsDarkTheme(!isDarkTheme);
-  };
-
-  const handleSaveSettings = () => {
     toast({
-      title: "Configurações salvas",
-      description: "Suas configurações foram atualizadas com sucesso."
+      title: "Configuração salva",
+      description: "As configurações foram atualizadas com sucesso.",
     });
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-      
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
-        <Header 
-          sidebarCollapsed={sidebarCollapsed} 
-          onToggleTheme={toggleTheme} 
-          isDarkTheme={isDarkTheme} 
-        />
+  // Handle company name change
+  const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleSettingChange('companyName', e.target.value);
+  };
+
+  // Handle number input change
+  const handleNumberChange = (key: keyof AppSettings, e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      handleSettingChange(key as any, value as any);
+    }
+  };
+
+  // Handle export all data
+  const handleExportAllData = () => {
+    // Get all data from localStorage
+    const exportObject: Record<string, any> = {};
+    
+    const keys = [
+      'appSettings',
+      'gboData',
+      'atividades',
+      'gboList',
+      'operatorsList',
+      'planningEvents', 
+      'documentsList',
+      'history'
+    ];
+    
+    keys.forEach(key => {
+      try {
+        const data = localStorage.getItem(key);
+        if (data) {
+          exportObject[key] = JSON.parse(data);
+        }
+      } catch (error) {
+        console.error(`Error exporting ${key}:`, error);
+      }
+    });
+    
+    // Convert to JSON string
+    const jsonString = JSON.stringify(exportObject, null, 2);
+    setExportData(jsonString);
+    setIsExportDialogOpen(true);
+  };
+
+  // Handle data import
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const jsonData = JSON.parse(event.target?.result as string);
         
-        <main className="p-4 md:p-6 max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold mb-6">Configurações</h1>
-          
-          <Tabs defaultValue="general" className="space-y-4">
-            <TabsList className="grid grid-cols-3 w-full max-w-md">
-              <TabsTrigger value="general">Geral</TabsTrigger>
-              <TabsTrigger value="account">Conta</TabsTrigger>
-              <TabsTrigger value="system">Sistema</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="general">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configurações Gerais</CardTitle>
-                  <CardDescription>
-                    Gerencie suas preferências gerais do sistema.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="theme-mode">Modo Escuro</Label>
-                      <Switch 
-                        id="theme-mode" 
-                        checked={isDarkTheme}
-                        onCheckedChange={toggleTheme}
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Alternar entre tema claro e escuro.
-                    </p>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="sidebar-collapse">Recolher barra lateral automaticamente</Label>
-                      <Switch id="sidebar-collapse" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Recolher a barra lateral automaticamente em telas menores.
-                    </p>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="language">Idioma</Label>
-                    <Select defaultValue="pt-BR">
-                      <SelectTrigger id="language">
-                        <SelectValue placeholder="Selecione um idioma" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pt-BR">Português (Brasil)</SelectItem>
-                        <SelectItem value="en-US">English (US)</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Escolha o idioma de exibição do sistema.
-                    </p>
-                  </div>
-                  
-                  <Button onClick={handleSaveSettings}>Salvar Configurações</Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="account">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configurações de Conta</CardTitle>
-                  <CardDescription>
-                    Gerencie suas informações de perfil e senha.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Nome</Label>
-                    <Input id="name" placeholder="Seu nome" defaultValue="Usuário Demo" />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="Seu email" defaultValue="usuario@exemplo.com" />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="current-password">Senha Atual</Label>
-                    <Input id="current-password" type="password" />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="new-password">Nova Senha</Label>
-                    <Input id="new-password" type="password" />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
-                    <Input id="confirm-password" type="password" />
-                  </div>
-                  
-                  <Button onClick={handleSaveSettings}>Atualizar Conta</Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="system">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configurações do Sistema</CardTitle>
-                  <CardDescription>
-                    Configure opções avançadas do sistema.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="notifications">Notificações</Label>
-                      <Switch id="notifications" defaultChecked />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Receber notificações do sistema.
-                    </p>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="uph-calculation">Método de Cálculo de UPH</Label>
-                    <Select defaultValue="standard">
-                      <SelectTrigger id="uph-calculation">
-                        <SelectValue placeholder="Selecione um método" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">Padrão</SelectItem>
-                        <SelectItem value="advanced">Avançado</SelectItem>
-                        <SelectItem value="custom">Personalizado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Escolha o método de cálculo para Unidades Por Hora.
-                    </p>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="api-key">Chave de API para Integração</Label>
-                    <div className="flex gap-2">
-                      <Input id="api-key" defaultValue="sk_test_123456789" type="password" />
-                      <Button variant="outline" className="shrink-0">Mostrar</Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Chave para integração com sistemas externos.
-                    </p>
-                  </div>
-                  
-                  <Button onClick={handleSaveSettings}>Salvar Configurações</Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </main>
-      </div>
-    </div>
+        // Import all data to localStorage
+        Object.keys(jsonData).forEach(key => {
+          saveToLocalStorage(key, jsonData[key]);
+        });
+        
+        toast({
+          title: "Dados importados",
+          description: "Todos os dados foram importados com sucesso. A página será recarregada.",
+        });
+        
+        // Reload the page after a short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        
+      } catch (error) {
+        toast({
+          title: "Erro na importação",
+          description: "O arquivo selecionado não contém dados válidos.",
+          variant: "destructive"
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Handle reset all data
+  const handleResetAllData = () => {
+    // Clear all data
+    const keys = [
+      'appSettings',
+      'gboData',
+      'atividades',
+      'gboList',
+      'operatorsList',
+      'planningEvents',
+      'documentsList',
+      'history'
+    ];
+    
+    keys.forEach(key => {
+      removeFromLocalStorage(key);
+    });
+    
+    toast({
+      title: "Dados resetados",
+      description: "Todos os dados foram resetados. A página será recarregada.",
+    });
+    
+    // Close dialog and reload page after a short delay
+    setIsResetDialogOpen(false);
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  };
+
+  const downloadExportFile = () => {
+    const blob = new Blob([exportData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gbo_data_export_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <BasePage title="Configurações">
+      <Tabs defaultValue="general" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="appearance">Aparência</TabsTrigger>
+          <TabsTrigger value="defaults">Padrões</TabsTrigger>
+          <TabsTrigger value="data">Dados</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="general">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações gerais</CardTitle>
+              <CardDescription>Gerenciar as configurações básicas do sistema</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Nome da empresa</Label>
+                <Input
+                  id="companyName"
+                  value={settings.companyName}
+                  onChange={handleCompanyNameChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="defaultShift">Turno padrão</Label>
+                <select
+                  id="defaultShift"
+                  className="w-full rounded-md border border-input px-3 py-2 bg-background text-sm ring-offset-background"
+                  value={settings.defaultShift}
+                  onChange={(e) => handleSettingChange('defaultShift', e.target.value as any)}
+                >
+                  <option value="morning">Manhã</option>
+                  <option value="afternoon">Tarde</option>
+                  <option value="night">Noite</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="notifications">Notificações</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receber notificações do sistema
+                  </p>
+                </div>
+                <Switch
+                  id="notifications"
+                  checked={settings.notificationsEnabled}
+                  onCheckedChange={(checked) => handleSettingChange('notificationsEnabled', checked)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="autoSaveInterval">Intervalo de salvamento automático (minutos)</Label>
+                <Input
+                  id="autoSaveInterval"
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={settings.autoSaveInterval}
+                  onChange={(e) => handleNumberChange('autoSaveInterval', e)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="welcomeScreen">Mostrar tela de boas-vindas</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Exibir tela de boas-vindas ao iniciar o sistema
+                  </p>
+                </div>
+                <Switch
+                  id="welcomeScreen"
+                  checked={settings.showWelcomeScreen}
+                  onCheckedChange={(checked) => handleSettingChange('showWelcomeScreen', checked)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="appearance">
+          <Card>
+            <CardHeader>
+              <CardTitle>Aparência</CardTitle>
+              <CardDescription>Personalizar a aparência do sistema</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="darkMode">Modo escuro</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Alterar para tema escuro
+                  </p>
+                </div>
+                <Switch
+                  id="darkMode"
+                  checked={settings.darkMode}
+                  onCheckedChange={(checked) => handleSettingChange('darkMode', checked)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="dateFormat">Formato de data</Label>
+                <select
+                  id="dateFormat"
+                  className="w-full rounded-md border border-input px-3 py-2 bg-background text-sm ring-offset-background"
+                  value={settings.dateFormat}
+                  onChange={(e) => handleSettingChange('dateFormat', e.target.value as any)}
+                >
+                  <option value="dd/MM/yyyy">DD/MM/AAAA</option>
+                  <option value="MM/dd/yyyy">MM/DD/AAAA</option>
+                  <option value="yyyy-MM-dd">AAAA-MM-DD</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="defaults">
+          <Card>
+            <CardHeader>
+              <CardTitle>Valores padrão</CardTitle>
+              <CardDescription>Configurar valores padrão para novos GBOs e atividades</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="defaultWorkingHours">Horas trabalhadas padrão</Label>
+                <Input
+                  id="defaultWorkingHours"
+                  type="number"
+                  min="1"
+                  max="24"
+                  step="0.5"
+                  value={settings.defaultWorkingHours}
+                  onChange={(e) => handleNumberChange('defaultWorkingHours', e)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="defaultFatiguePercentage">Percentual de fadiga padrão (%)</Label>
+                <Input
+                  id="defaultFatiguePercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={settings.defaultFatiguePercentage}
+                  onChange={(e) => handleNumberChange('defaultFatiguePercentage', e)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="data">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gerenciamento de dados</CardTitle>
+              <CardDescription>Exportar, importar ou resetar dados do sistema</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert>
+                <AlertDescription>
+                  Estas ações afetam todos os dados do sistema. Certifique-se de fazer backup antes de prosseguir.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button onClick={handleExportAllData}>
+                  Exportar todos os dados
+                </Button>
+                
+                <div className="flex items-center">
+                  <input
+                    type="file"
+                    id="import-file"
+                    accept=".json"
+                    className="sr-only"
+                    onChange={handleImportData}
+                  />
+                  <Label 
+                    htmlFor="import-file"
+                    className="flex-1 flex justify-center p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 cursor-pointer"
+                  >
+                    Importar dados
+                  </Label>
+                </div>
+                
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setIsResetDialogOpen(true)}
+                  className="col-span-1 md:col-span-2"
+                >
+                  Resetar todos os dados
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resetar todos os dados</DialogTitle>
+            <DialogDescription>
+              Esta ação irá apagar permanentemente todos os dados do sistema.
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsResetDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleResetAllData}>
+              Resetar dados
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Exportar dados</DialogTitle>
+            <DialogDescription>
+              Seus dados foram exportados. Clique no botão abaixo para baixá-los.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="h-[300px] overflow-auto border rounded-md p-2 bg-muted/10">
+            <pre className="text-xs">{exportData}</pre>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>
+              Fechar
+            </Button>
+            <Button onClick={downloadExportFile}>
+              Baixar arquivo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </BasePage>
   );
 };
 

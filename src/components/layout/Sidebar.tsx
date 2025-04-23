@@ -3,6 +3,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   LayoutDashboard,
   Layers3,
@@ -13,6 +14,7 @@ import {
   File,
   Clock,
   Calendar,
+  BarChart2,
   LucideIcon
 } from 'lucide-react';
 
@@ -36,6 +38,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           size="icon"
           onClick={onToggle}
           className="text-sidebar-foreground"
+          title={collapsed ? "Expandir menu" : "Recolher menu"}
         >
           {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </Button>
@@ -48,6 +51,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <SidebarItem icon={Calendar} label="Planejamento" path="/planning" collapsed={collapsed} />
         <SidebarItem icon={Clock} label="Histórico" path="/history" collapsed={collapsed} />
         <SidebarItem icon={File} label="Documentos" path="/documents" collapsed={collapsed} />
+        <SidebarItem icon={BarChart2} label="Análise de Atividades" path="/analise-atividades" collapsed={collapsed} />
       </nav>
       
       <div className="p-3 border-t border-sidebar-border">
@@ -68,7 +72,7 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
   const location = useLocation();
   const isActive = location.pathname === path;
   
-  return (
+  const item = (
     <Link
       to={path}
       className={cn(
@@ -80,4 +84,22 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
       {!collapsed && <span className="ml-3">{label}</span>}
     </Link>
   );
+
+  // If collapsed, wrap with tooltip
+  if (collapsed) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {item}
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {label}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+  
+  return item;
 }
