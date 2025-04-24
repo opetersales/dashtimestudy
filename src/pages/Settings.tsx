@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +17,7 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
+import { Download } from '@/components/ui/icons';
 
 interface AppSettings {
   darkMode: boolean;
@@ -33,7 +33,6 @@ interface AppSettings {
 }
 
 const Settings = () => {
-  // Load settings from localStorage
   const [settings, setSettings] = useState<AppSettings>(() => {
     return loadFromLocalStorage<AppSettings>('appSettings', {
       darkMode: false,
@@ -53,13 +52,11 @@ const Settings = () => {
   const [exportData, setExportData] = useState('');
   const { toast } = useToast();
 
-  // Handle settings change
   const handleSettingChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     const updatedSettings = { ...settings, [key]: value };
     setSettings(updatedSettings);
     saveToLocalStorage('appSettings', updatedSettings);
 
-    // If dark mode is changed, update the HTML class
     if (key === 'darkMode') {
       if (value) {
         document.documentElement.classList.add('dark');
@@ -74,12 +71,10 @@ const Settings = () => {
     });
   };
 
-  // Handle company name change
   const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleSettingChange('companyName', e.target.value);
   };
 
-  // Handle number input change
   const handleNumberChange = (key: keyof AppSettings, e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
     if (!isNaN(value)) {
@@ -87,9 +82,7 @@ const Settings = () => {
     }
   };
 
-  // Handle export all data
   const handleExportAllData = () => {
-    // Get all data from localStorage
     const exportObject: Record<string, any> = {};
     
     const keys = [
@@ -114,13 +107,11 @@ const Settings = () => {
       }
     });
     
-    // Convert to JSON string
     const jsonString = JSON.stringify(exportObject, null, 2);
     setExportData(jsonString);
     setIsExportDialogOpen(true);
   };
 
-  // Handle data import
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -130,7 +121,6 @@ const Settings = () => {
       try {
         const jsonData = JSON.parse(event.target?.result as string);
         
-        // Import all data to localStorage
         Object.keys(jsonData).forEach(key => {
           saveToLocalStorage(key, jsonData[key]);
         });
@@ -140,11 +130,9 @@ const Settings = () => {
           description: "Todos os dados foram importados com sucesso. A página será recarregada.",
         });
         
-        // Reload the page after a short delay
         setTimeout(() => {
           window.location.reload();
         }, 1500);
-        
       } catch (error) {
         toast({
           title: "Erro na importação",
@@ -156,9 +144,7 @@ const Settings = () => {
     reader.readAsText(file);
   };
 
-  // Handle reset all data
   const handleResetAllData = () => {
-    // Clear all data
     const keys = [
       'appSettings',
       'gboData',
@@ -179,7 +165,6 @@ const Settings = () => {
       description: "Todos os dados foram resetados. A página será recarregada.",
     });
     
-    // Close dialog and reload page after a short delay
     setIsResetDialogOpen(false);
     setTimeout(() => {
       window.location.reload();
@@ -197,6 +182,21 @@ const Settings = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleOfflineDownload = () => {
+    const downloadUrl = "https://storage.lovable.dev/versao_offline.exe";
+    toast({
+      title: "Download iniciado",
+      description: "A versão offline será baixada. Note que esta versão funciona sem internet, mas não sincroniza com o banco de dados online.",
+    });
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = "versao_offline.exe";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -396,6 +396,27 @@ const Settings = () => {
                 >
                   Resetar todos os dados
                 </Button>
+              </div>
+              
+              <div className="border-t pt-6 mt-6">
+                <h3 className="text-lg font-medium mb-4">Versão Offline</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Baixe a versão offline do sistema para usar sem internet
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Versão atual: 1.0.0
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleOfflineDownload}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Baixar Versão Offline
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,5 +1,4 @@
-
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -14,6 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertTriangle } from 'lucide-react';
 
 export function Dashboard() {
+  const [dashboardData, setDashboardData] = useState(() => calculateDashboardData());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setDashboardData(calculateDashboardData());
+    };
+
+    window.addEventListener('dashboardUpdate', handleUpdate);
+    return () => window.removeEventListener('dashboardUpdate', handleUpdate);
+  }, []);
+
   // Filter states
   const [timePeriod, setTimePeriod] = useState<string>("all");
   const [selectedClient, setSelectedClient] = useState<string>("all");

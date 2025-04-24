@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +30,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
-// Form schema validation
 const timeStudyFormSchema = z.object({
   client: z.string().min(1, { message: 'Cliente é obrigatório' }),
   modelName: z.string().min(1, { message: 'Nome do modelo é obrigatório' }),
@@ -44,7 +42,7 @@ const timeStudyFormSchema = z.object({
 type TimeStudyFormValues = z.infer<typeof timeStudyFormSchema>;
 
 interface TimeStudyFormProps {
-  onSubmit: (data: Partial<TimeStudy>) => void;
+  onSubmit: (data: Partial<TimeStudy>, isDraft: boolean) => void;
   onCancel: () => void;
   initialData?: Partial<TimeStudy>;
 }
@@ -85,7 +83,7 @@ export function TimeStudyForm({ onSubmit, onCancel, initialData }: TimeStudyForm
     setShifts(updatedShifts);
   };
 
-  const handleFormSubmit = (data: TimeStudyFormValues) => {
+  const handleFormSubmit = (data: TimeStudyFormValues, isDraft: boolean = true) => {
     const dailyDemand = calculateDailyDemand();
     
     onSubmit({
@@ -94,12 +92,16 @@ export function TimeStudyForm({ onSubmit, onCancel, initialData }: TimeStudyForm
       dailyDemand,
       shifts: shifts as Shift[],
       productionLines: [],
-    });
+      status: isDraft ? 'draft' : 'active'
+    }, isDraft);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        form.handleSubmit((data) => handleFormSubmit(data, true))();
+      }} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
@@ -285,8 +287,13 @@ export function TimeStudyForm({ onSubmit, onCancel, initialData }: TimeStudyForm
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="submit">
-            Salvar Estudo
+          <Button type="button" variant="secondary" 
+            onClick={() => form.handleSubmit((data) => handleFormSubmit(data, true))()}>
+            Salvar Rascunho
+          </Button>
+          <Button type="button"
+            onClick={() => form.handleSubmit((data) => handleFormSubmit(data, false))()}>
+            Publicar Estudo
           </Button>
         </div>
       </form>

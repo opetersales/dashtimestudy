@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Button } from '@/components/ui/button';
@@ -29,18 +28,15 @@ const TimeStudies = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { toast } = useToast();
 
-  // Load time studies from localStorage
   const [studies, setStudies] = useState<TimeStudy[]>(() => {
     return loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
   });
 
-  // Function to get current user name
   const getUserName = () => {
     const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
     return userData.name;
   };
 
-  // Function to record history
   const updateHistory = (action: string, details: string, studyName: string) => {
     const history = loadFromLocalStorage<any[]>('history', []);
     const newHistoryItem = {
@@ -57,7 +53,7 @@ const TimeStudies = () => {
     saveToLocalStorage('history', history);
   };
 
-  const handleFormSubmit = (data: Partial<TimeStudy>) => {
+  const handleFormSubmit = (data: Partial<TimeStudy>, isDraft: boolean) => {
     const newStudy: TimeStudy = {
       id: `study-${Date.now()}`,
       client: data.client || '',
@@ -75,7 +71,7 @@ const TimeStudies = () => {
       updatedAt: new Date().toISOString(),
       createdBy: getUserName(),
       version: '1.0',
-      status: 'draft',
+      status: isDraft ? 'draft' : 'active',
     };
     
     const updatedStudies = [...studies, newStudy];
@@ -83,14 +79,19 @@ const TimeStudies = () => {
     saveToLocalStorage('timeStudies', updatedStudies);
     
     toast({
-      title: "Estudo criado com sucesso",
-      description: `${newStudy.client} - ${newStudy.modelName} foi adicionado ao sistema.`,
+      title: isDraft ? "Rascunho salvo" : "Estudo publicado",
+      description: `${newStudy.client} - ${newStudy.modelName} foi ${isDraft ? 'salvo como rascunho' : 'publicado'}.`,
     });
     
-    // Update history
-    updateHistory('create', `Criação do estudo de tempo ${newStudy.client} - ${newStudy.modelName}`, `${newStudy.client} - ${newStudy.modelName}`);
+    updateHistory(
+      isDraft ? 'draft' : 'create', 
+      `${isDraft ? 'Rascunho criado' : 'Publicação'} do estudo ${newStudy.client} - ${newStudy.modelName}`, 
+      `${newStudy.client} - ${newStudy.modelName}`
+    );
     
     setIsFormOpen(false);
+
+    window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
   return (
