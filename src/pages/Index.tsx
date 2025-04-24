@@ -42,7 +42,7 @@ const Index = () => {
     saveToLocalStorage('history', history);
   };
 
-  const handleFormSubmit = (data: Partial<TimeStudy>) => {
+  const handleFormSubmit = (data: Partial<TimeStudy>, isDraft: boolean = true) => {
     const newStudy: TimeStudy = {
       id: `study-${Date.now()}`,
       client: data.client || '',
@@ -60,7 +60,7 @@ const Index = () => {
       updatedAt: new Date().toISOString(),
       createdBy: getUserName(),
       version: '1.0',
-      status: 'draft',
+      status: isDraft ? 'draft' : 'active',
     };
     
     const updatedStudies = [...studies, newStudy];
@@ -68,14 +68,21 @@ const Index = () => {
     saveToLocalStorage('timeStudies', updatedStudies);
     
     toast({
-      title: "Estudo criado com sucesso",
-      description: `${newStudy.client} - ${newStudy.modelName} foi adicionado ao sistema.`,
+      title: isDraft ? "Rascunho criado com sucesso" : "Estudo publicado com sucesso",
+      description: `${newStudy.client} - ${newStudy.modelName} foi ${isDraft ? 'salvo como rascunho' : 'publicado'}.`,
     });
     
     // Update history
-    updateHistory('create', `Criação do estudo de tempo ${newStudy.client} - ${newStudy.modelName}`, `${newStudy.client} - ${newStudy.modelName}`);
+    updateHistory(
+      isDraft ? 'draft' : 'create', 
+      `${isDraft ? 'Rascunho criado' : 'Criação'} do estudo de tempo ${newStudy.client} - ${newStudy.modelName}`, 
+      `${newStudy.client} - ${newStudy.modelName}`
+    );
     
     setIsFormOpen(false);
+
+    // Manually trigger dashboard update
+    window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
   return (

@@ -27,8 +27,6 @@ interface AppSettings {
   notificationsEnabled: boolean;
   autoSaveInterval: number; // in minutes
   dateFormat: 'dd/MM/yyyy' | 'MM/dd/yyyy' | 'yyyy-MM-dd';
-  defaultWorkingHours: number;
-  defaultFatiguePercentage: number;
 }
 
 const Settings = () => {
@@ -39,8 +37,6 @@ const Settings = () => {
       notificationsEnabled: true,
       autoSaveInterval: 5,
       dateFormat: 'dd/MM/yyyy',
-      defaultWorkingHours: 8,
-      defaultFatiguePercentage: 10
     });
   });
 
@@ -236,8 +232,8 @@ const Settings = () => {
   };
 
   const handleOfflineDownload = () => {
-    // Fixed version - Direct link to download
-    const downloadUrl = "https://storage.googleapis.com/flowline-insight/versao_offline.exe";
+    // Updated direct link to download
+    const downloadUrl = "https://firebasestorage.googleapis.com/v0/b/flowline-insight.appspot.com/o/versao_offline.exe?alt=media";
     
     // Create an anchor element and trigger download
     const link = document.createElement('a');
@@ -264,7 +260,6 @@ const Settings = () => {
         <TabsList>
           <TabsTrigger value="general">Geral</TabsTrigger>
           <TabsTrigger value="appearance">Aparência</TabsTrigger>
-          <TabsTrigger value="defaults">Padrões</TabsTrigger>
           <TabsTrigger value="data">Dados</TabsTrigger>
         </TabsList>
         
@@ -346,41 +341,6 @@ const Settings = () => {
                   <option value="MM/dd/yyyy">MM/DD/AAAA</option>
                   <option value="yyyy-MM-dd">AAAA-MM-DD</option>
                 </select>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="defaults">
-          <Card>
-            <CardHeader>
-              <CardTitle>Valores padrão</CardTitle>
-              <CardDescription>Configurar valores padrão para novos GBOs e atividades</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="defaultWorkingHours">Horas trabalhadas padrão</Label>
-                <Input
-                  id="defaultWorkingHours"
-                  type="number"
-                  min="1"
-                  max="24"
-                  step="0.5"
-                  value={settings.defaultWorkingHours}
-                  onChange={(e) => handleNumberChange('defaultWorkingHours', e)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="defaultFatiguePercentage">Percentual de fadiga padrão (%)</Label>
-                <Input
-                  id="defaultFatiguePercentage"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={settings.defaultFatiguePercentage}
-                  onChange={(e) => handleNumberChange('defaultFatiguePercentage', e)}
-                />
               </div>
             </CardContent>
           </Card>
