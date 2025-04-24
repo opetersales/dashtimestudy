@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,10 +24,8 @@ interface AppSettings {
   darkMode: boolean;
   companyName: string;
   companyLogo?: string;
-  defaultShift: 'morning' | 'afternoon' | 'night';
   notificationsEnabled: boolean;
   autoSaveInterval: number; // in minutes
-  showWelcomeScreen: boolean;
   dateFormat: 'dd/MM/yyyy' | 'MM/dd/yyyy' | 'yyyy-MM-dd';
   defaultWorkingHours: number;
   defaultFatiguePercentage: number;
@@ -37,10 +36,8 @@ const Settings = () => {
     return loadFromLocalStorage<AppSettings>('appSettings', {
       darkMode: false,
       companyName: 'Minha Empresa',
-      defaultShift: 'morning',
       notificationsEnabled: true,
       autoSaveInterval: 5,
-      showWelcomeScreen: true,
       dateFormat: 'dd/MM/yyyy',
       defaultWorkingHours: 8,
       defaultFatiguePercentage: 10
@@ -51,6 +48,45 @@ const Settings = () => {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportData, setExportData] = useState('');
   const { toast } = useToast();
+
+  // Effect to remove Lovable badge on component mount
+  useEffect(() => {
+    const badge = document.getElementById('lovable-badge');
+    if (badge) {
+      badge.style.display = 'none';
+    }
+  }, []);
+
+  // Handle notifications
+  useEffect(() => {
+    if (settings.notificationsEnabled) {
+      // Request notification permission if enabled
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+  }, [settings.notificationsEnabled]);
+
+  // Send notification function
+  const sendNotification = (title: string, body: string) => {
+    if (!settings.notificationsEnabled) return;
+    
+    if (Notification.permission === 'granted') {
+      new Notification(title, {
+        body: body,
+        icon: '/favicon.ico'
+      });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification(title, {
+            body: body,
+            icon: '/favicon.ico'
+          });
+        }
+      });
+    }
+  };
 
   const handleSettingChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     const updatedSettings = { ...settings, [key]: value };
@@ -63,6 +99,10 @@ const Settings = () => {
       } else {
         document.documentElement.classList.remove('dark');
       }
+    }
+    
+    if (key === 'notificationsEnabled' && value === true) {
+      Notification.requestPermission();
     }
 
     toast({
@@ -87,6 +127,7 @@ const Settings = () => {
     
     const keys = [
       'appSettings',
+      'timeStudies',
       'gboData',
       'atividades',
       'gboList',
@@ -110,6 +151,9 @@ const Settings = () => {
     const jsonString = JSON.stringify(exportObject, null, 2);
     setExportData(jsonString);
     setIsExportDialogOpen(true);
+    
+    // Send notification for export
+    sendNotification('Dados Exportados', 'Seus dados foram exportados com sucesso.');
   };
 
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,6 +174,9 @@ const Settings = () => {
           description: "Todos os dados foram importados com sucesso. A página será recarregada.",
         });
         
+        // Send notification for import
+        sendNotification('Dados Importados', 'Seus dados foram importados com sucesso.');
+        
         setTimeout(() => {
           window.location.reload();
         }, 1500);
@@ -147,6 +194,7 @@ const Settings = () => {
   const handleResetAllData = () => {
     const keys = [
       'appSettings',
+      'timeStudies',
       'gboData',
       'atividades',
       'gboList',
@@ -177,26 +225,37 @@ const Settings = () => {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `gbo_data_export_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `app_data_export_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    
+    // Send notification for download
+    sendNotification('Download Concluído', 'Seu arquivo de exportação foi baixado com sucesso.');
   };
 
   const handleOfflineDownload = () => {
-    const downloadUrl = "https://storage.lovable.dev/versao_offline.exe";
+    // Fixed version - Direct link to download
+    const downloadUrl = "https://storage.googleapis.com/flowline-insight/versao_offline.exe";
+    
+    // Create an anchor element and trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', 'versao_offline.exe');
+    
+    // Append to the document, click it, and remove it
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
     toast({
       title: "Download iniciado",
       description: "A versão offline será baixada. Note que esta versão funciona sem internet, mas não sincroniza com o banco de dados online.",
     });
-
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = "versao_offline.exe";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    // Send notification for offline version download
+    sendNotification('Download Iniciado', 'O download da versão offline foi iniciado.');
   };
 
   return (
@@ -225,20 +284,6 @@ const Settings = () => {
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="defaultShift">Turno padrão</Label>
-                <select
-                  id="defaultShift"
-                  className="w-full rounded-md border border-input px-3 py-2 bg-background text-sm ring-offset-background"
-                  value={settings.defaultShift}
-                  onChange={(e) => handleSettingChange('defaultShift', e.target.value as any)}
-                >
-                  <option value="morning">Manhã</option>
-                  <option value="afternoon">Tarde</option>
-                  <option value="night">Noite</option>
-                </select>
-              </div>
-              
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="notifications">Notificações</Label>
@@ -262,20 +307,6 @@ const Settings = () => {
                   max="60"
                   value={settings.autoSaveInterval}
                   onChange={(e) => handleNumberChange('autoSaveInterval', e)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="welcomeScreen">Mostrar tela de boas-vindas</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Exibir tela de boas-vindas ao iniciar o sistema
-                  </p>
-                </div>
-                <Switch
-                  id="welcomeScreen"
-                  checked={settings.showWelcomeScreen}
-                  onCheckedChange={(checked) => handleSettingChange('showWelcomeScreen', checked)}
                 />
               </div>
             </CardContent>
