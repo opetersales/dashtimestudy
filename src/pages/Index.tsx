@@ -2,97 +2,99 @@
 import React, { useState } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Dashboard } from '@/components/dashboard/Dashboard';
-import { GboForm } from '@/components/gbo/GboForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
-import { GBO } from '@/utils/types';
+import { TimeStudy } from '@/utils/types';
 import { useToast } from '@/components/ui/use-toast';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
+import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
 
 const Index = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { toast } = useToast();
   
-  // Load GBOs from localStorage
-  const [gbos, setGbos] = useState<GBO[]>(() => {
-    return loadFromLocalStorage<GBO[]>('gboList', []);
+  // Load time studies from localStorage
+  const [studies, setStudies] = useState<TimeStudy[]>(() => {
+    return loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
   });
 
-  // Função para obter o nome do usuário atual
+  // Function to get current user name
   const getUserName = () => {
     const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
     return userData.name;
   };
 
-  // Função para registrar histórico
-  const updateHistory = (action: string, details: string, gboName: string) => {
+  // Function to record history
+  const updateHistory = (action: string, details: string, studyName: string) => {
     const history = loadFromLocalStorage<any[]>('history', []);
     const newHistoryItem = {
       id: `hist-${Date.now()}`,
-      name: gboName,
-      version: '1.0',
       date: new Date().toISOString(),
       user: getUserName(),
       action: action,
-      details,
+      details: details,
+      entityType: 'timeStudy',
+      entityId: `study-${Date.now()}`,
+      entityName: studyName,
     };
     history.unshift(newHistoryItem);
     saveToLocalStorage('history', history);
   };
 
-  const handleFormSubmit = (data: Partial<GBO>) => {
-    const newGbo: GBO = {
-      id: `gbo-${Date.now()}`,
-      name: data.name || 'Novo GBO',
-      productModel: data.productModel || 'N/A',
-      productVariant: data.productVariant || 'Standard',
-      productionLine: data.productionLine || 'N/A',
+  const handleFormSubmit = (data: Partial<TimeStudy>) => {
+    const newStudy: TimeStudy = {
+      id: `study-${Date.now()}`,
+      client: data.client || '',
+      modelName: data.modelName || '',
+      studyDate: data.studyDate || new Date().toISOString(),
+      responsiblePerson: data.responsiblePerson || '',
+      monthlyDemand: data.monthlyDemand || 0,
+      workingDays: data.workingDays || 22,
+      dailyDemand: data.monthlyDemand && data.workingDays 
+        ? Math.round(data.monthlyDemand / data.workingDays) 
+        : 0,
+      shifts: data.shifts || [],
+      productionLines: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: getUserName(),
       version: '1.0',
       status: 'draft',
-      cycleTime: data.cycleTime || 60,
-      targetUPH: data.targetUPH || 80,
-      actualUPH: data.actualUPH || 75,
-      efficiency: data.efficiency || 0.7,
-      operatorCount: data.operatorCount || 5,
-      workstations: []
     };
     
-    const updatedGbos = [...gbos, newGbo];
-    setGbos(updatedGbos);
-    saveToLocalStorage('gboList', updatedGbos);
+    const updatedStudies = [...studies, newStudy];
+    setStudies(updatedStudies);
+    saveToLocalStorage('timeStudies', updatedStudies);
     
     toast({
-      title: "GBO criado com sucesso",
-      description: `${newGbo.name} foi adicionado ao sistema.`,
+      title: "Estudo criado com sucesso",
+      description: `${newStudy.client} - ${newStudy.modelName} foi adicionado ao sistema.`,
     });
     
-    // Registrar no histórico
-    updateHistory('create', `Criação do GBO ${newGbo.name}`, newGbo.name);
+    // Update history
+    updateHistory('create', `Criação do estudo de tempo ${newStudy.client} - ${newStudy.modelName}`, `${newStudy.client} - ${newStudy.modelName}`);
     
     setIsFormOpen(false);
   };
 
   return (
-    <BasePage title="Dashboard de Operações">
+    <BasePage title="Dashboard de Estudos de Tempo">
       <div className="flex justify-end mb-6">
         <Button onClick={() => setIsFormOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Novo GBO
+          Novo Estudo
         </Button>
       </div>
       
       <Dashboard />
       
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
-            <DialogTitle>Criar Novo GBO</DialogTitle>
+            <DialogTitle>Criar Novo Estudo</DialogTitle>
           </DialogHeader>
-          <GboForm 
+          <TimeStudyForm 
             onSubmit={handleFormSubmit}
             onCancel={() => setIsFormOpen(false)}
           />

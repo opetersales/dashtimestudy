@@ -9,6 +9,8 @@ import Operators from './pages/Operators';
 import Settings from './pages/Settings';
 import History from './pages/History';
 import NotFound from './pages/NotFound';
+import TimeStudies from './pages/TimeStudies';
+import TimeStudyDetail from './pages/TimeStudyDetail';
 import './App.css';
 
 function App() {
@@ -18,6 +20,8 @@ function App() {
       <Route path="/documents" element={<Documents />} />
       <Route path="/gbos" element={<GBOs />} />
       <Route path="/gbo/:id" element={<GboDetail />} />
+      <Route path="/studies" element={<TimeStudies />} />
+      <Route path="/study/:id" element={<TimeStudyDetail />} />
       <Route path="/planning" element={<Planning />} />
       <Route path="/operators" element={<Operators />} />
       <Route path="/history" element={<History />} />

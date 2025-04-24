@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -5,14 +6,13 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   LayoutDashboard,
-  Layers3,
-  Users,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
   File,
   Clock,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  Settings,
   LucideIcon
 } from 'lucide-react';
 
@@ -30,7 +30,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
     >
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-        <h1 className={cn("font-bold text-xl", collapsed && "hidden")}>GBO</h1>
+        <h1 className={cn("font-bold text-xl", collapsed && "hidden")}>Estudos de Tempo</h1>
         <Button
           variant="ghost"
           size="icon"
@@ -44,7 +44,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       
       <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
         <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" collapsed={collapsed} />
-        <SidebarItem icon={Layers3} label="GBOs" path="/gbos" collapsed={collapsed} />
+        <SidebarItem icon={Clock} label="Estudos" path="/studies" collapsed={collapsed} />
         <SidebarItem icon={Users} label="Operadores" path="/operators" collapsed={collapsed} />
         <SidebarItem icon={Calendar} label="Planejamento" path="/planning" collapsed={collapsed} />
         <SidebarItem icon={Clock} label="Histórico" path="/history" collapsed={collapsed} />
