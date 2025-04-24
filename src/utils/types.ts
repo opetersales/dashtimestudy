@@ -1,3 +1,4 @@
+
 // Time study types
 export interface TimeCollection {
   id: string;

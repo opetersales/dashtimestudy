@@ -4,8 +4,6 @@ import Index from './pages/Index';
 import Documents from './pages/Documents';
 import GBOs from './pages/GBOs';
 import GboDetail from './pages/GboDetail';
-import Planning from './pages/Planning';
-import Operators from './pages/Operators';
 import Settings from './pages/Settings';
 import History from './pages/History';
 import NotFound from './pages/NotFound';
@@ -22,8 +20,6 @@ function App() {
       <Route path="/gbo/:id" element={<GboDetail />} />
       <Route path="/studies" element={<TimeStudies />} />
       <Route path="/study/:id" element={<TimeStudyDetail />} />
-      <Route path="/planning" element={<Planning />} />
-      <Route path="/operators" element={<Operators />} />
       <Route path="/history" element={<History />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="*" element={<NotFound />} />

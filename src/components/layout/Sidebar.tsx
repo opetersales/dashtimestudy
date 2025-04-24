@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,10 +7,9 @@ import {
   LayoutDashboard,
   File,
   Clock,
-  Calendar,
+  History,
   ChevronLeft,
   ChevronRight,
-  Users,
   Settings,
   LucideIcon
 } from 'lucide-react';
@@ -45,9 +43,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
         <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" collapsed={collapsed} />
         <SidebarItem icon={Clock} label="Estudos" path="/studies" collapsed={collapsed} />
-        <SidebarItem icon={Users} label="Operadores" path="/operators" collapsed={collapsed} />
-        <SidebarItem icon={Calendar} label="Planejamento" path="/planning" collapsed={collapsed} />
-        <SidebarItem icon={Clock} label="Histórico" path="/history" collapsed={collapsed} />
+        <SidebarItem icon={History} label="Histórico" path="/history" collapsed={collapsed} />
         <SidebarItem icon={File} label="Documentos" path="/documents" collapsed={collapsed} />
       </nav>
       
