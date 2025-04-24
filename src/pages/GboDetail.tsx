@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BasePage } from '@/components/layout/BasePage';
@@ -43,25 +42,21 @@ const GboDetail = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [atividadeToDelete, setAtividadeToDelete] = useState<string | null>(null);
 
-  // Função para obter o nome do usuário atual
   const getUserName = () => {
     const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
     return userData.name;
   };
 
   useEffect(() => {
-    // Load GBO data
     const gbos = loadFromLocalStorage<GBO[]>('gboList', []);
     const currentGbo = gbos.find(g => g.id === id);
     
     if (currentGbo) {
       setGbo(currentGbo);
       
-      // Load activities for this GBO
       const savedAtividades = loadFromLocalStorage<Atividade[]>(`atividades-${id}`, []);
       setAtividades(savedAtividades);
       
-      // Load GBO analysis data
       const savedGboData = loadFromLocalStorage<GboData>(`gboData-${id}`, {
         cliente: currentGbo.name,
         modelo: currentGbo.productModel,
@@ -72,7 +67,6 @@ const GboDetail = () => {
       });
       setGboData(savedGboData);
     } else {
-      // GBO not found, navigate back to GBO list
       toast({
         title: "Erro",
         description: "GBO não encontrado",
@@ -82,7 +76,6 @@ const GboDetail = () => {
     }
   }, [id, navigate, toast]);
 
-  // Função para registrar histórico
   const updateHistory = (action: string, details: string) => {
     const history = loadFromLocalStorage<any[]>('history', []);
     const newHistoryItem = {
@@ -113,7 +106,6 @@ const GboDetail = () => {
     const existingIndex = atividades.findIndex(a => a.id === atividade.id);
     
     if (existingIndex >= 0) {
-      // Update existing activity
       updatedAtividades = [
         ...atividades.slice(0, existingIndex),
         atividade,
@@ -125,7 +117,6 @@ const GboDetail = () => {
       });
       updateHistory('update', `Atualização da atividade: ${atividade.descricao}`);
     } else {
-      // Add new activity
       updatedAtividades = [...atividades, atividade];
       toast({
         title: "Atividade adicionada",
@@ -139,7 +130,6 @@ const GboDetail = () => {
   };
 
   const handleEditAtividade = (id: string) => {
-    // The URL params will be handled by AtividadeForm component
   };
 
   const confirmDeleteAtividade = (id: string) => {
@@ -163,7 +153,6 @@ const GboDetail = () => {
     }
   };
 
-  // Criar workstations a partir das atividades
   const workstations = React.useMemo(() => {
     if (!atividades.length) return [];
     
@@ -191,7 +180,6 @@ const GboDetail = () => {
       postoMap.set(atividade.posto, posto);
     });
     
-    // Calcular eficiência e status
     const tempoCicloMaximo = Math.max(...Array.from(postoMap.values()).map(p => p.cycleTime));
     
     return Array.from(postoMap.values()).map(posto => {
@@ -217,7 +205,7 @@ const GboDetail = () => {
   }, [atividades]);
 
   if (!gbo) {
-    return null; // Loading state
+    return null;
   }
 
   return (
@@ -273,7 +261,7 @@ const GboDetail = () => {
             onWorkstationClick={(ws) => {
               toast({
                 title: `${ws.name}`,
-                description: `Tempo de ciclo: ${ws.cycleTime.toFixed(1)}s, Eficiência: ${Math.round(ws.efficiency * 100)}%`,
+                description: `Tempo de ciclo: ${ws.cycleTime?.toFixed(1)}s, Eficiência: ${Math.round((ws.efficiency || 0) * 100)}%`,
               });
             }}
           />

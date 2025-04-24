@@ -12,6 +12,8 @@ export interface Activity {
   pfdFactor: number; // Default 10% (0.1)
   averageNormalTime?: number; // Calculated
   cycleTime?: number; // Calculated
+  name?: string;
+  timeRequired?: number;
 }
 
 export interface Workstation {
@@ -23,6 +25,10 @@ export interface Workstation {
   cycleTime?: number; // Calculated - sum of activities cycle times
   uph?: number; // Calculated - 3600 / cycleTime
   idleTime?: number; // Calculated - [(line CT - station CT) / line CT] * 100
+  position?: number;
+  status?: 'bottleneck' | 'optimal' | 'warning' | 'normal';
+  efficiency?: number;
+  operatorId?: string;
 }
 
 export interface ProductionLine {

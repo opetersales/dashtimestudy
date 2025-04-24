@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ProductionLine, TimeStudy, Workstation, Activity } from '@/utils/types';
 import {
@@ -22,6 +21,7 @@ import {
 } from '@/components/ui/accordion';
 import { WorkstationForm } from './WorkstationForm';
 import { ActivityForm } from './ActivityForm';
+import { ProductionLineForm } from './ProductionLineForm';
 
 interface TimeStudyLinesTabProps {
   study: TimeStudy;
