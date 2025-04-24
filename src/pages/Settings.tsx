@@ -17,7 +17,7 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
-import { Download } from '@/components/ui/icons';
+import { Download } from 'lucide-react';
 
 interface AppSettings {
   darkMode: boolean;

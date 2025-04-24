@@ -12,6 +12,16 @@ import { TimeStudy, Workstation, Activity, PerformanceData, MetricCardData } fro
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle } from 'lucide-react';
 
+// Calculate dashboard data function
+const calculateDashboardData = () => {
+  // Load time studies from localStorage
+  const studies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
+  
+  // Calculate various metrics based on studies data
+  // This function will be expanded as needed
+  return {};
+};
+
 export function Dashboard() {
   const [dashboardData, setDashboardData] = useState(() => calculateDashboardData());
 
@@ -614,7 +624,7 @@ export function Dashboard() {
                       ))}
                     </Pie>
                     <RechartsTooltip
-                      formatter={(value) => `${parseFloat(value).toFixed(2)}s`}
+                      formatter={(value) => [`${parseFloat(String(value)).toFixed(2)}s`, '']}
                       labelFormatter={(_, payload) => payload[0]?.name || ""}
                     />
                   </PieChart>
