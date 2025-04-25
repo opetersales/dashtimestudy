@@ -257,13 +257,13 @@ export const TimeStudyForm = ({ onSubmit, onCancel, isEdit = false, initialData 
                   </Button>
                 )}
                 
-                {/* Na tela de criação inicial, mostrar apenas o botão Criar Estudo */}
+                {/* Only show the "Create Study" button during initial creation,
+                    and show the "Save as Draft" and "Publish" buttons only during edit mode */}
                 {!isEdit ? (
                   <Button type="submit">
                     Criar Estudo
                   </Button>
                 ) : (
-                  /* Na tela de edição, mostrar os botões de Salvar como Rascunho e Publicar */
                   <>
                     <Button 
                       type="button" 
