@@ -42,7 +42,7 @@ const Index = () => {
     saveToLocalStorage('history', history);
   };
 
-  const handleFormSubmit = (data: Partial<TimeStudy>, isDraft: boolean = true) => {
+  const handleFormSubmit = (data: Partial<TimeStudy>) => {
     const newStudy: TimeStudy = {
       id: `study-${Date.now()}`,
       client: data.client || '',
@@ -60,7 +60,7 @@ const Index = () => {
       updatedAt: new Date().toISOString(),
       createdBy: getUserName(),
       version: '1.0',
-      status: isDraft ? 'draft' : 'active',
+      status: 'draft', // Always start as draft
     };
     
     const updatedStudies = [...studies, newStudy];
@@ -68,20 +68,20 @@ const Index = () => {
     saveToLocalStorage('timeStudies', updatedStudies);
     
     toast({
-      title: isDraft ? "Rascunho criado com sucesso" : "Estudo publicado com sucesso",
-      description: `${newStudy.client} - ${newStudy.modelName} foi ${isDraft ? 'salvo como rascunho' : 'publicado'}.`,
+      title: "Estudo criado",
+      description: `${newStudy.client} - ${newStudy.modelName} foi criado como rascunho. Adicione linhas e postos de trabalho.`,
     });
     
     // Update history
     updateHistory(
-      isDraft ? 'draft' : 'create', 
-      `${isDraft ? 'Rascunho criado' : 'Criação'} do estudo de tempo ${newStudy.client} - ${newStudy.modelName}`, 
+      'create',
+      `Criação do estudo de tempo ${newStudy.client} - ${newStudy.modelName}`,
       `${newStudy.client} - ${newStudy.modelName}`
     );
     
     setIsFormOpen(false);
 
-    // Manually trigger dashboard update
+    // Trigger dashboard update
     window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
@@ -104,6 +104,7 @@ const Index = () => {
           <TimeStudyForm 
             onSubmit={handleFormSubmit}
             onCancel={() => setIsFormOpen(false)}
+            isEdit={false} // Explicitly set to false for creation
           />
         </DialogContent>
       </Dialog>

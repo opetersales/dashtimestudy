@@ -1,9 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BasePage } from '@/components/layout/BasePage';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogFooter,
+  DialogDescription
+} from '@/components/ui/dialog';
+import { Plus, Trash, File, ArrowLeft } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   Card, 
   CardContent, 
@@ -11,61 +19,59 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import { TimeStudy, ProductionLine, Workstation } from '@/utils/types';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
+import { 
+  ProductionLineForm, 
+  WorkstationForm, 
+  ActivityForm, 
+  ShiftForm 
+} from '@/components/timeStudy/forms';
+import { TimeStudy, ProductionLine, Workstation, Activity, Shift } from '@/utils/types';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
-import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
-import { ArrowLeft, Edit, File, Plus, Trash, Save } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ProductionLineForm } from '@/components/timeStudy/ProductionLineForm';
-import { TimeStudyGeneralTab } from '@/components/timeStudy/TimeStudyGeneralTab';
-import { TimeStudyLinesTab } from '@/components/timeStudy/TimeStudyLinesTab';
-import { TimeStudyCalculationsTab } from '@/components/timeStudy/TimeStudyCalculationsTab';
-import { TimeStudyReportsTab } from '@/components/timeStudy/TimeStudyReportsTab';
+import { ptBR } from 'date-fns/locale';
+import { Input } from '@/components/ui/input';
 
 const TimeStudyDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+
   const [study, setStudy] = useState<TimeStudy | null>(null);
-  const [isAddLineOpen, setIsAddLineOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
-  const [isLoading, setIsLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
-  const [saveAsDraft, setSaveAsDraft] = useState(false);
+  const [isLineFormOpen, setIsLineFormOpen] = useState(false);
+  const [isWorkstationFormOpen, setIsWorkstationFormOpen] = useState(false);
+  const [isActivityFormOpen, setIsActivityFormOpen] = useState(false);
+  const [isShiftFormOpen, setIsShiftFormOpen] = useState(false);
+  const [selectedLine, setSelectedLine] = useState<ProductionLine | null>(null);
+  const [selectedWorkstation, setSelectedWorkstation] = useState<Workstation | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Function to get current user name
-  const getUserName = () => {
-    const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
-    return userData.name;
-  };
-
-  // Load study data
   useEffect(() => {
     if (id) {
-      const allStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
-      const foundStudy = allStudies.find(study => study.id === id);
-      
+      const storedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
+      const foundStudy = storedStudies.find(s => s.id === id);
       if (foundStudy) {
         setStudy(foundStudy);
       } else {
         toast({
           title: "Estudo não encontrado",
-          description: "O estudo solicitado não foi encontrado.",
-          variant: "destructive"
+          description: "O estudo especificado não foi encontrado.",
         });
-        navigate('/studies');
+        navigate('/time-studies');
       }
-      
-      setIsLoading(false);
     }
   }, [id, navigate, toast]);
 
-  // Function to update history
-  const updateHistory = (action: string, details: string) => {
-    if (!study) return;
-    
+  const getUserName = () => {
+    const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
+    return userData.name;
+  };
+
+  const updateHistory = (action: string, details: string, studyName: string) => {
     const history = loadFromLocalStorage<any[]>('history', []);
     const newHistoryItem = {
       id: `hist-${Date.now()}`,
@@ -74,52 +80,47 @@ const TimeStudyDetail = () => {
       action: action,
       details: details,
       entityType: 'timeStudy',
-      entityId: study.id,
-      entityName: `${study.client} - ${study.modelName}`,
+      entityId: study?.id || 'unknown',
+      entityName: studyName,
     };
     history.unshift(newHistoryItem);
     saveToLocalStorage('history', history);
   };
 
-  // Save updated study
-  const saveStudy = (updatedStudy: TimeStudy) => {
-    const allStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
-    const updatedStudies = allStudies.map(s => s.id === updatedStudy.id ? updatedStudy : s);
-    saveToLocalStorage('timeStudies', updatedStudies);
-    setStudy(updatedStudy);
-    
-    // Notify dashboard to update
-    window.dispatchEvent(new Event('dashboardUpdate'));
-  };
-
-  const handleAddProductionLine = (lineData: Partial<ProductionLine>) => {
+  const handleSaveStudy = (updatedData: Partial<TimeStudy> = {}, newStatus?: 'draft' | 'active' | 'archived') => {
     if (!study) return;
-
-    const newLine: ProductionLine = {
-      id: `line-${Date.now()}`,
-      name: lineData.name || 'Nova Linha',
-      notes: lineData.notes || '',
-      workstations: [],
-    };
 
     const updatedStudy = {
       ...study,
-      productionLines: [...study.productionLines, newLine],
-      updatedAt: new Date().toISOString()
+      ...updatedData,
+      updatedAt: new Date().toISOString(),
+      status: newStatus || study.status
     };
 
-    saveStudy(updatedStudy);
-    updateHistory('update', `Adicionada linha de produção "${newLine.name}"`);
+    // Update study in localStorage
+    const allStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
+    const updatedStudies = allStudies.map(s => s.id === study.id ? updatedStudy : s);
+    saveToLocalStorage('timeStudies', updatedStudies);
 
+    // Update local state
+    setStudy(updatedStudy as TimeStudy);
+
+    // Record history
+    updateHistory(
+      'edit',
+      `Edição do estudo ${updatedStudy.client} - ${updatedStudy.modelName}`,
+      `${updatedStudy.client} - ${updatedStudy.modelName}`
+    );
+    
     toast({
-      title: "Linha adicionada",
-      description: `A linha "${newLine.name}" foi adicionada com sucesso.`
+      title: "Estudo atualizado",
+      description: "As alterações foram salvas com sucesso.",
     });
-
-    setIsAddLineOpen(false);
+    
+    // Trigger dashboard update
+    window.dispatchEvent(new Event('dashboardUpdate'));
   };
-  
-  // Handler for deleting the study
+
   const handleDeleteStudy = () => {
     if (!study) return;
     
@@ -127,51 +128,29 @@ const TimeStudyDetail = () => {
     const updatedStudies = allStudies.filter(s => s.id !== study.id);
     saveToLocalStorage('timeStudies', updatedStudies);
     
-    updateHistory('delete', `Estudo "${study.client} - ${study.modelName}" foi deletado`);
-    
-    toast({
-      title: "Estudo deletado",
-      description: `O estudo "${study.client} - ${study.modelName}" foi removido com sucesso.`
-    });
-    
-    // Notify dashboard to update
-    window.dispatchEvent(new Event('dashboardUpdate'));
-    
-    // Navigate back to studies list
-    navigate('/studies');
-  };
-
-  // Handler for saving study (as draft or active)
-  const handleSaveStudyStatus = () => {
-    if (!study) return;
-    
-    const newStatus = saveAsDraft ? 'draft' : 'active';
-    const updatedStudy = {
-      ...study,
-      status: newStatus,
-      updatedAt: new Date().toISOString()
-    };
-    
-    saveStudy(updatedStudy);
-    
     updateHistory(
-      'update', 
-      `Status do estudo atualizado para ${saveAsDraft ? 'rascunho' : 'ativo'}`
+      'delete',
+      `Exclusão do estudo ${study.client} - ${study.modelName}`,
+      `${study.client} - ${study.modelName}`
     );
     
     toast({
-      title: saveAsDraft ? "Salvo como rascunho" : "Estudo publicado",
-      description: `O estudo foi ${saveAsDraft ? 'salvo como rascunho' : 'publicado com sucesso'}.`
+      title: "Estudo excluído",
+      description: `${study.client} - ${study.modelName} foi excluído com sucesso.`,
     });
     
-    setIsSaveDialogOpen(false);
+    setIsDeleteDialogOpen(false);
+    navigate('/time-studies');
+    
+    // Trigger dashboard update
+    window.dispatchEvent(new Event('dashboardUpdate'));
   };
-  
-  // Function to export current study
+
   const handleExportStudy = () => {
     if (!study) return;
+    setIsExporting(true);
     
-    // Create a blob with just this study data
+    // Create a blob with the study data
     const blob = new Blob([JSON.stringify(study, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
@@ -188,153 +167,443 @@ const TimeStudyDetail = () => {
       description: "Os dados do estudo foram exportados com sucesso."
     });
     
-    updateHistory('export', `Estudo "${study.client} - ${study.modelName}" foi exportado`);
+    updateHistory(
+      'export',
+      `Exportação do estudo ${study.client} - ${study.modelName}`,
+      `${study.client} - ${study.modelName}`
+    );
+    
+    setIsExporting(false);
   };
+
+  // Production Lines
+  const handleNewLineSubmit = (data: ProductionLine) => {
+    if (!study) return;
+    
+    const newLine: ProductionLine = {
+      id: `line-${Date.now()}`,
+      name: data.name,
+      notes: data.notes,
+      workstations: [],
+    };
+    
+    const updatedStudy: TimeStudy = {
+      ...study,
+      productionLines: [...study.productionLines, newLine],
+      updatedAt: new Date().toISOString(),
+    };
+    
+    handleSaveStudy({ productionLines: updatedStudy.productionLines });
+    setIsLineFormOpen(false);
+  };
+
+  const handleUpdateLine = (updatedLine: ProductionLine) => {
+    if (!study) return;
   
-  // Function to handle edit button click
-  const handleEditStudy = () => {
-    // This would open an edit dialog or navigate to edit mode
-    // For now, we'll just show a message that this functionality is coming soon
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "A edição completa do estudo será disponibilizada em breve."
-    });
+    const updatedLines = study.productionLines.map(line =>
+      line.id === updatedLine.id ? { ...line, ...updatedLine } : line
+    );
+  
+    handleSaveStudy({ productionLines: updatedLines });
+    setSelectedLine(null);
   };
 
-  if (isLoading) {
-    return (
-      <BasePage>
-        <div className="flex items-center justify-center h-48">
-          <p>Carregando estudo...</p>
-        </div>
-      </BasePage>
-    );
-  }
+  const handleDeleteLine = (lineToDelete: ProductionLine) => {
+    if (!study) return;
+  
+    const updatedLines = study.productionLines.filter(line => line.id !== lineToDelete.id);
+    handleSaveStudy({ productionLines: updatedLines });
+    setSelectedLine(null);
+  };
 
-  if (!study) {
-    return (
-      <BasePage>
-        <div className="flex flex-col items-center justify-center h-48 space-y-4">
-          <p>Estudo não encontrado</p>
-          <Button onClick={() => navigate('/studies')}>Voltar para lista</Button>
-        </div>
-      </BasePage>
+  // Workstations
+  const handleNewWorkstationSubmit = (data: Workstation) => {
+    if (!study || !selectedLine) return;
+    
+    const newWorkstation: Workstation = {
+      id: `ws-${Date.now()}`,
+      number: data.number,
+      name: data.name,
+      notes: data.notes,
+      activities: [],
+    };
+    
+    const updatedLines = study.productionLines.map(line => {
+      if (line.id === selectedLine.id) {
+        return {
+          ...line,
+          workstations: [...line.workstations, newWorkstation],
+        };
+      }
+      return line;
+    });
+    
+    handleSaveStudy({ productionLines: updatedLines });
+    setIsWorkstationFormOpen(false);
+  };
+
+  const handleUpdateWorkstation = (updatedWorkstation: Workstation) => {
+    if (!study || !selectedLine) return;
+  
+    const updatedLines = study.productionLines.map(line => {
+      if (line.id === selectedLine.id) {
+        const updatedWorkstations = line.workstations.map(ws =>
+          ws.id === updatedWorkstation.id ? { ...ws, ...updatedWorkstation } : ws
+        );
+        return { ...line, workstations: updatedWorkstations };
+      }
+      return line;
+    });
+  
+    handleSaveStudy({ productionLines: updatedLines });
+    setSelectedWorkstation(null);
+  };
+
+  const handleDeleteWorkstation = (workstationToDelete: Workstation) => {
+    if (!study || !selectedLine) return;
+  
+    const updatedLines = study.productionLines.map(line => {
+      if (line.id === selectedLine.id) {
+        const updatedWorkstations = line.workstations.filter(ws => ws.id !== workstationToDelete.id);
+        return { ...line, workstations: updatedWorkstations };
+      }
+      return line;
+    });
+  
+    handleSaveStudy({ productionLines: updatedLines });
+    setSelectedWorkstation(null);
+  };
+
+  // Activities
+  const handleNewActivitySubmit = (data: Activity) => {
+    if (!study || !selectedLine || !selectedWorkstation) return;
+    
+    const newActivity: Activity = {
+      id: `act-${Date.now()}`,
+      description: data.description,
+      type: data.type,
+      collections: [],
+      pfdFactor: data.pfdFactor,
+    };
+    
+    const updatedLines = study.productionLines.map(line => {
+      if (line.id === selectedLine.id) {
+        const updatedWorkstations = line.workstations.map(ws => {
+          if (ws.id === selectedWorkstation.id) {
+            return {
+              ...ws,
+              activities: [...ws.activities, newActivity],
+            };
+          }
+          return ws;
+        });
+        return { ...line, workstations: updatedWorkstations };
+      }
+      return line;
+    });
+    
+    handleSaveStudy({ productionLines: updatedLines });
+    setIsActivityFormOpen(false);
+  };
+
+  const handleUpdateActivity = (updatedActivity: Activity) => {
+    if (!study || !selectedLine || !selectedWorkstation) return;
+  
+    const updatedLines = study.productionLines.map(line => {
+      if (line.id === selectedLine.id) {
+        const updatedWorkstations = line.workstations.map(ws => {
+          if (ws.id === selectedWorkstation.id) {
+            const updatedActivities = ws.activities.map(act =>
+              act.id === updatedActivity.id ? { ...act, ...updatedActivity } : act
+            );
+            return { ...ws, activities: updatedActivities };
+          }
+          return ws;
+        });
+        return { ...line, workstations: updatedWorkstations };
+      }
+      return line;
+    });
+  
+    handleSaveStudy({ productionLines: updatedLines });
+    setSelectedActivity(null);
+  };
+
+  const handleDeleteActivity = (activityToDelete: Activity) => {
+    if (!study || !selectedLine || !selectedWorkstation) return;
+  
+    const updatedLines = study.productionLines.map(line => {
+      if (line.id === selectedLine.id) {
+        const updatedWorkstations = line.workstations.map(ws => {
+          if (ws.id === selectedWorkstation.id) {
+            const updatedActivities = ws.activities.filter(act => act.id !== activityToDelete.id);
+            return { ...ws, activities: updatedActivities };
+          }
+          return ws;
+        });
+        return { ...line, workstations: updatedWorkstations };
+      }
+      return line;
+    });
+  
+    handleSaveStudy({ productionLines: updatedLines });
+    setSelectedActivity(null);
+  };
+
+  // Shifts
+  const handleNewShiftSubmit = (data: Shift) => {
+    if (!study) return;
+    
+    const newShift: Shift = {
+      id: `shift-${Date.now()}`,
+      name: data.name,
+      hours: data.hours,
+      isActive: data.isActive,
+    };
+    
+    const updatedStudy: TimeStudy = {
+      ...study,
+      shifts: [...study.shifts, newShift],
+      updatedAt: new Date().toISOString(),
+    };
+    
+    handleSaveStudy({ shifts: updatedStudy.shifts });
+    setIsShiftFormOpen(false);
+  };
+
+  const handleUpdateShift = (updatedShift: Shift) => {
+    if (!study) return;
+  
+    const updatedShifts = study.shifts.map(shift =>
+      shift.id === updatedShift.id ? { ...shift, ...updatedShift } : shift
     );
-  }
+  
+    handleSaveStudy({ shifts: updatedShifts });
+    setSelectedShift(null);
+  };
+
+  const handleDeleteShift = (shiftToDelete: Shift) => {
+    if (!study) return;
+  
+    const updatedShifts = study.shifts.filter(shift => shift.id !== shiftToDelete.id);
+    handleSaveStudy({ shifts: updatedShifts });
+    setSelectedShift(null);
+  };
+
+  const handleGeneralFormSubmit = (data: any, isDraft: boolean = true) => {
+    handleSaveStudy(data, isDraft ? 'draft' : 'active');
+  };
+
+  const renderContent = () => {
+    if (!study) return <div>Carregando...</div>;
+    
+    return (
+      <div className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações Gerais</CardTitle>
+            <CardDescription>Detalhes do estudo de tempo</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TimeStudyForm
+              initialData={{
+                client: study.client,
+                modelName: study.modelName,
+                studyDate: study.studyDate,
+                responsiblePerson: study.responsiblePerson,
+                monthlyDemand: study.monthlyDemand,
+                workingDays: study.workingDays,
+              }}
+              onSubmit={handleGeneralFormSubmit}
+              isEdit={true} // Pass isEdit=true here for edit mode
+            />
+          </CardContent>
+        </Card>
+
+        <Tabs defaultValue="lines" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="lines">Linhas de Produção</TabsTrigger>
+            <TabsTrigger value="shifts">Turnos</TabsTrigger>
+          </TabsList>
+
+          {/* Production Lines Tab */}
+          <TabsContent value="lines" className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => setIsLineFormOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Linha
+              </Button>
+            </div>
+
+            {study.productionLines.length === 0 ? (
+              <Card className="text-center p-8">
+                <CardHeader>
+                  <CardTitle>Nenhuma linha de produção cadastrada</CardTitle>
+                  <CardDescription>
+                    Adicione linhas de produção para detalhar o estudo de tempo.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {study.productionLines.map((line) => (
+                  <Card key={line.id} className="h-full">
+                    <CardHeader>
+                      <CardTitle className="flex justify-between items-center">
+                        {line.name}
+                      </CardTitle>
+                      <CardDescription>{line.notes}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Postos:</span>
+                          <span>{line.workstations.length}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Cycle Time:</span>
+                          <span>{line.cycleTime}</span>
+                        </div>
+                        {/* Add more line details here */}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedLine(line);
+                          setIsWorkstationFormOpen(true);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Posto
+                      </Button>
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLine(line);
+                            setIsLineFormOpen(true);
+                          }}
+                        >
+                          Editar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLine(line);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Shifts Tab */}
+          <TabsContent value="shifts" className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => setIsShiftFormOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Turno
+              </Button>
+            </div>
+
+            {study.shifts.length === 0 ? (
+              <Card className="text-center p-8">
+                <CardHeader>
+                  <CardTitle>Nenhum turno cadastrado</CardTitle>
+                  <CardDescription>
+                    Adicione turnos para detalhar o estudo de tempo.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {study.shifts.map((shift) => (
+                  <Card key={shift.id} className="h-full">
+                    <CardHeader>
+                      <CardTitle className="flex justify-between items-center">
+                        {shift.name}
+                      </CardTitle>
+                      <CardDescription>{shift.hours} horas</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Ativo:</span>
+                          <span>{shift.isActive ? 'Sim' : 'Não'}</span>
+                        </div>
+                        {/* Add more shift details here */}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <div></div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedShift(shift);
+                            setIsShiftFormOpen(true);
+                          }}
+                        >
+                          Editar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedShift(shift);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  };
 
   return (
-    <BasePage
-      title={`${study.client} - ${study.modelName}`}
-      subtitle={`Estudo de tempo criado em ${format(new Date(study.createdAt), 'dd/MM/yyyy')} por ${study.createdBy}`}
+    <BasePage 
+      title={study ? `${study.client} - ${study.modelName}` : "Detalhes do Estudo"}
+      subtitle={study ? `Estudo criado por ${study.createdBy} em ${format(new Date(study.createdAt), 'dd/MM/yyyy', { locale: ptBR })}` : ""}
     >
-      <div className="flex mb-6">
-        <Button variant="outline" onClick={() => navigate('/studies')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-        <div className="flex-1" />
-        <Button 
-          variant="outline" 
-          className="mr-2" 
-          onClick={handleExportStudy}
-        >
-          <File className="mr-2 h-4 w-4" />
-          Exportar
-        </Button>
-        <Button 
-          variant="outline" 
-          className="mr-2" 
-          onClick={handleEditStudy}
-        >
-          <Edit className="mr-2 h-4 w-4" />
-          Editar
-        </Button>
-        <Button 
-          variant="destructive" 
-          className="mr-2" 
-          onClick={() => setIsDeleteDialogOpen(true)}
-        >
-          <Trash className="mr-2 h-4 w-4" />
-          Excluir
-        </Button>
-        <Button 
-          variant="outline" 
-          className="mr-2" 
-          onClick={() => {
-            setSaveAsDraft(true);
-            setIsSaveDialogOpen(true);
-          }}
-        >
-          <Save className="mr-2 h-4 w-4" />
-          Salvar como rascunho
-        </Button>
-        <Button 
-          variant="default" 
-          onClick={() => {
-            setSaveAsDraft(false);
-            setIsSaveDialogOpen(true);
-          }}
-        >
-          <Save className="mr-2 h-4 w-4" />
-          Publicar
-        </Button>
-      </div>
+      <Button variant="ghost" onClick={() => navigate('/time-studies')} className="mb-4">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Voltar
+      </Button>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general">Dados Gerais</TabsTrigger>
-          <TabsTrigger value="lines">Linhas e Postos</TabsTrigger>
-          <TabsTrigger value="calculations">Cálculos</TabsTrigger>
-          <TabsTrigger value="reports">Relatórios e Gráficos</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="general" className="space-y-4">
-          <TimeStudyGeneralTab study={study} />
-        </TabsContent>
+      {renderContent()}
 
-        <TabsContent value="lines" className="space-y-4">
-          <div className="flex justify-end mb-4">
-            <Button onClick={() => setIsAddLineOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Linha
-            </Button>
-          </div>
-          
-          <TimeStudyLinesTab 
-            study={study} 
-            onStudyUpdate={saveStudy} 
-            updateHistory={updateHistory} 
-          />
-        </TabsContent>
-
-        <TabsContent value="calculations" className="space-y-4">
-          <TimeStudyCalculationsTab study={study} />
-        </TabsContent>
-
-        <TabsContent value="reports" className="space-y-4">
-          <TimeStudyReportsTab study={study} />
-        </TabsContent>
-      </Tabs>
-
-      <Dialog open={isAddLineOpen} onOpenChange={setIsAddLineOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Adicionar Linha de Produção</DialogTitle>
-          </DialogHeader>
-          <ProductionLineForm
-            onSubmit={handleAddProductionLine}
-            onCancel={() => setIsAddLineOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-      
+      {/* Delete Study Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Excluir estudo</DialogTitle>
+            <DialogTitle>Excluir</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir o estudo "{study.client} - {study.modelName}"?
-              Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -347,28 +616,72 @@ const TimeStudyDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-        <DialogContent>
+
+      {/* Line Form Dialog */}
+      <Dialog open={isLineFormOpen} onOpenChange={() => setIsLineFormOpen(false)}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>
-              {saveAsDraft ? "Salvar como rascunho" : "Publicar estudo"}
-            </DialogTitle>
-            <DialogDescription>
-              {saveAsDraft 
-                ? "O estudo será salvo como rascunho e não será considerado nos cálculos gerais."
-                : "O estudo será publicado e considerado em todos os cálculos e relatórios do sistema."
-              }
-            </DialogDescription>
+            <DialogTitle>{selectedLine ? 'Editar Linha' : 'Nova Linha'}</DialogTitle>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSaveDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant={saveAsDraft ? "outline" : "default"} onClick={handleSaveStudyStatus}>
-              {saveAsDraft ? "Salvar como rascunho" : "Publicar"}
-            </Button>
-          </DialogFooter>
+          <ProductionLineForm 
+            onSubmit={selectedLine ? handleUpdateLine : handleNewLineSubmit}
+            onCancel={() => {
+              setIsLineFormOpen(false);
+              setSelectedLine(null);
+            }}
+            initialData={selectedLine}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Workstation Form Dialog */}
+      <Dialog open={isWorkstationFormOpen} onOpenChange={() => setIsWorkstationFormOpen(false)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{selectedWorkstation ? 'Editar Posto' : 'Novo Posto'}</DialogTitle>
+          </DialogHeader>
+          <WorkstationForm
+            onSubmit={selectedWorkstation ? handleUpdateWorkstation : handleNewWorkstationSubmit}
+            onCancel={() => {
+              setIsWorkstationFormOpen(false);
+              setSelectedWorkstation(null);
+            }}
+            initialData={selectedWorkstation}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity Form Dialog */}
+      <Dialog open={isActivityFormOpen} onOpenChange={() => setIsActivityFormOpen(false)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{selectedActivity ? 'Editar Atividade' : 'Nova Atividade'}</DialogTitle>
+          </DialogHeader>
+          <ActivityForm
+            onSubmit={selectedActivity ? handleUpdateActivity : handleNewActivitySubmit}
+            onCancel={() => {
+              setIsActivityFormOpen(false);
+              setSelectedActivity(null);
+            }}
+            initialData={selectedActivity}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Shift Form Dialog */}
+      <Dialog open={isShiftFormOpen} onOpenChange={() => setIsShiftFormOpen(false)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{selectedShift ? 'Editar Turno' : 'Novo Turno'}</DialogTitle>
+          </DialogHeader>
+          <ShiftForm
+            onSubmit={selectedShift ? handleUpdateShift : handleNewShiftSubmit}
+            onCancel={() => {
+              setIsShiftFormOpen(false);
+              setSelectedShift(null);
+            }}
+            initialData={selectedShift}
+          />
         </DialogContent>
       </Dialog>
     </BasePage>

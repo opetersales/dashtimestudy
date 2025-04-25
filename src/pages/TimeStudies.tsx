@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Button } from '@/components/ui/button';
@@ -37,10 +36,8 @@ const TimeStudies = () => {
     return loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
   });
 
-  // Effect to listen for dashboard updates
   useEffect(() => {
     const handleDashboardUpdate = () => {
-      // Reload studies from localStorage
       const updatedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
       setStudies(updatedStudies);
     };
@@ -72,7 +69,7 @@ const TimeStudies = () => {
     saveToLocalStorage('history', history);
   };
 
-  const handleFormSubmit = (data: Partial<TimeStudy>, isDraft: boolean) => {
+  const handleFormSubmit = (data: Partial<TimeStudy>) => {
     const newStudy: TimeStudy = {
       id: `study-${Date.now()}`,
       client: data.client || '',
@@ -90,7 +87,7 @@ const TimeStudies = () => {
       updatedAt: new Date().toISOString(),
       createdBy: getUserName(),
       version: '1.0',
-      status: isDraft ? 'draft' : 'active',
+      status: 'draft',
     };
     
     const updatedStudies = [...studies, newStudy];
@@ -98,19 +95,18 @@ const TimeStudies = () => {
     saveToLocalStorage('timeStudies', updatedStudies);
     
     toast({
-      title: isDraft ? "Rascunho salvo" : "Estudo publicado",
-      description: `${newStudy.client} - ${newStudy.modelName} foi ${isDraft ? 'salvo como rascunho' : 'publicado'}.`,
+      title: "Estudo criado",
+      description: `${newStudy.client} - ${newStudy.modelName} foi criado como rascunho. Adicione linhas e postos de trabalho.`,
     });
     
     updateHistory(
-      isDraft ? 'draft' : 'create', 
-      `${isDraft ? 'Rascunho criado' : 'Publicação'} do estudo ${newStudy.client} - ${newStudy.modelName}`, 
+      'create',
+      `Criação do estudo ${newStudy.client} - ${newStudy.modelName}`,
       `${newStudy.client} - ${newStudy.modelName}`
     );
     
     setIsFormOpen(false);
 
-    // Trigger dashboard update
     window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
@@ -142,7 +138,6 @@ const TimeStudies = () => {
     setIsDeleteDialogOpen(false);
     setStudyToDelete(null);
     
-    // Trigger dashboard update
     window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
@@ -150,7 +145,6 @@ const TimeStudies = () => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Create a blob with just this study data
     const blob = new Blob([JSON.stringify(study, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
@@ -271,6 +265,7 @@ const TimeStudies = () => {
           <TimeStudyForm 
             onSubmit={handleFormSubmit}
             onCancel={() => setIsFormOpen(false)}
+            isEdit={false}
           />
         </DialogContent>
       </Dialog>
