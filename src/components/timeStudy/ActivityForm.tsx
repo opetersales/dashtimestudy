@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,7 +14,6 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Activity, TimeCollection } from '@/utils/types';
 import {
   Select,
   SelectContent,
@@ -22,72 +21,75 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Plus, Trash } from 'lucide-react';
+import { Activity } from '@/utils/types';
 
-// Form schema validation
+const MAX_COLLECTIONS = 10;
+
 const activityFormSchema = z.object({
-  description: z.string().min(1, { message: 'Descrição da atividade é obrigatória' }),
-  type: z.enum(['Manual', 'Maquinário']),
-  pfdFactor: z.number().min(0).max(0.5).default(0.1),
-  // Collections will be handled separately
+  stationNumber: z.string().min(1, "Número da estação é obrigatório"),
+  description: z.string().min(1, "Descrição é obrigatória"),
+  type: z.enum(["Manual", "Maquinário"], {
+    required_error: "Tipo de trabalho é obrigatório",
+  }),
+  collections: z.array(z.number().min(0, "Tempo deve ser positivo"))
+    .min(1, "Pelo menos uma coleta é necessária")
+    .max(MAX_COLLECTIONS, `Máximo de ${MAX_COLLECTIONS} coletas permitidas`),
+  pfdFactor: z.number()
+    .min(0, "Fator PF&D deve ser positivo")
+    .max(1, "Fator PF&D deve ser menor que 1"),
 });
 
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
 
 interface ActivityFormProps {
-  onSubmit: (data: Partial<Activity>) => void;
+  onSubmit: (data: Activity) => void;
   onCancel: () => void;
-  initialData?: Partial<Activity>;
+  initialData?: Activity;
 }
 
 export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormProps) {
-  const [collections, setCollections] = useState<TimeCollection[]>(
-    initialData?.collections || []
-  );
-
-  const defaultValues: Partial<ActivityFormValues> = {
-    description: initialData?.description || '',
-    type: initialData?.type || 'Manual',
-    pfdFactor: initialData?.pfdFactor !== undefined ? initialData.pfdFactor : 0.1,
-  };
-
   const form = useForm<ActivityFormValues>({
     resolver: zodResolver(activityFormSchema),
-    defaultValues,
+    defaultValues: {
+      stationNumber: initialData?.stationNumber || '',
+      description: initialData?.description || '',
+      type: initialData?.type || 'Manual',
+      collections: initialData?.collections || [0],
+      pfdFactor: initialData?.pfdFactor || 0.1,
+    },
   });
 
+  const collectionsCount = form.watch('collections').length;
+
   const addCollection = () => {
-    if (collections.length < 10) {
-      setCollections([
-        ...collections,
-        { id: `col-${Date.now()}`, value: 0 }
-      ]);
+    const currentCollections = form.getValues('collections');
+    if (currentCollections.length < MAX_COLLECTIONS) {
+      form.setValue('collections', [...currentCollections, 0]);
     }
   };
 
-  const removeCollection = (id: string) => {
-    setCollections(collections.filter(col => col.id !== id));
-  };
-
-  const updateCollectionValue = (id: string, value: number) => {
-    setCollections(
-      collections.map(col => 
-        col.id === id ? { ...col, value } : col
-      )
-    );
-  };
-
-  const handleFormSubmit = (data: ActivityFormValues) => {
-    onSubmit({
-      ...data,
-      collections,
-    });
+  const removeCollection = (index: number) => {
+    const currentCollections = form.getValues('collections');
+    form.setValue('collections', currentCollections.filter((_, i) => i !== index));
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="stationNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Número da Estação</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Ex: 01" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="description"
@@ -95,7 +97,7 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
             <FormItem>
               <FormLabel>Descrição da Atividade</FormLabel>
               <FormControl>
-                <Input placeholder="Ex: Montar componente X" {...field} />
+                <Input {...field} placeholder="Descreva a atividade" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -107,19 +109,16 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
           name="type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo da Atividade</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
-                defaultValue={field.value}
-              >
+              <FormLabel>Tipo de Trabalho</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Manual">Manual (Hand)</SelectItem>
-                  <SelectItem value="Maquinário">Maquinário (Mach)</SelectItem>
+                  <SelectItem value="Manual">Manual</SelectItem>
+                  <SelectItem value="Maquinário">Maquinário</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -127,88 +126,89 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
           )}
         />
 
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <FormLabel>Coletas de Tempo</FormLabel>
+            {collectionsCount < MAX_COLLECTIONS && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addCollection}
+              >
+                Adicionar Coleta
+              </Button>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {form.watch('collections').map((_, index) => (
+              <FormField
+                key={index}
+                control={form.control}
+                name={`collections.${index}`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Coleta {index + 1}</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      {index > 0 && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => removeCollection(index)}
+                        >
+                          ×
+                        </Button>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ))}
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="pfdFactor"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fator PF&D ({Math.round(field.value * 100)}%)</FormLabel>
+              <FormLabel>Fator PF&D</FormLabel>
               <FormControl>
-                <Slider 
-                  defaultValue={[field.value * 100]} 
-                  min={0} 
-                  max={50} 
-                  step={1}
-                  onValueChange={(vals) => {
-                    field.onChange(vals[0] / 100);
-                  }}
+                <Input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
                 />
               </FormControl>
               <FormDescription>
-                Ajuste para perdas, fadiga e demora (0-50%)
+                Fator de fadiga e necessidades pessoais (entre 0 e 1)
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-medium">Tempos de Coleta</h3>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm" 
-              onClick={addCollection}
-              disabled={collections.length >= 10}
-            >
-              <Plus className="mr-1 h-3 w-3" />
-              Adicionar Coleta
-            </Button>
-          </div>
-
-          {collections.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              Adicione ao menos uma coleta de tempo
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {collections.map((collection, index) => (
-                <div key={collection.id} className="flex items-center gap-2">
-                  <div className="flex-grow">
-                    <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                      Coleta {index + 1} (segundos)
-                    </label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={collection.value}
-                      onChange={(e) => updateCollectionValue(collection.id, parseFloat(e.target.value) || 0)}
-                      placeholder="Tempo em segundos"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="mt-5"
-                    onClick={() => removeCollection(collection.id)}
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={collections.length === 0}>
-            Salvar Atividade
+          <Button type="submit">
+            {initialData ? 'Salvar' : 'Criar'} Atividade
           </Button>
         </div>
       </form>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -23,7 +22,6 @@ const TimeStudies: React.FC = () => {
     const loadedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
     setStudies(loadedStudies);
 
-    // Listen for dashboard updates to refresh the studies list
     const handleDashboardUpdate = () => {
       const refreshedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
       setStudies(refreshedStudies);
@@ -36,13 +34,11 @@ const TimeStudies: React.FC = () => {
     };
   }, []);
 
-  // Function to get current user name
   const getUserName = () => {
     const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
     return userData.name;
   };
 
-  // Function to record history
   const updateHistory = (action: string, details: string, studyName: string) => {
     const history = loadFromLocalStorage<any[]>('history', []);
     const newHistoryItem = {
@@ -59,7 +55,6 @@ const TimeStudies: React.FC = () => {
     saveToLocalStorage('history', history);
   };
 
-  // Helper functions that were missing in our update
   const handleDeleteStudy = (e: React.MouseEvent, study: TimeStudy) => {
     e.preventDefault();
     e.stopPropagation();
@@ -119,13 +114,11 @@ const TimeStudies: React.FC = () => {
   };
 
   const handleFormSubmit = (data: any) => {
-    // Process the date to ensure it's a string
     const studyDate = data.studyDate instanceof Date
       ? data.studyDate.toISOString()
       : new Date(data.studyDate).toISOString();
     
     if (selectedStudy) {
-      // Update existing study
       const updatedStudy: TimeStudy = {
         ...selectedStudy,
         client: data.client || selectedStudy.client,
@@ -159,7 +152,6 @@ const TimeStudies: React.FC = () => {
         `${updatedStudy.client} - ${updatedStudy.modelName}`
       );
     } else {
-      // Create new study
       const newStudy: TimeStudy = {
         id: `study-${Date.now()}`,
         client: data.client || '',
@@ -177,7 +169,7 @@ const TimeStudies: React.FC = () => {
         updatedAt: new Date().toISOString(),
         createdBy: getUserName(),
         version: '1.0',
-        status: 'draft', // Always start as draft
+        status: 'draft',
       };
       
       const updatedStudies = [...studies, newStudy];
@@ -189,7 +181,6 @@ const TimeStudies: React.FC = () => {
         description: `${newStudy.client} - ${newStudy.modelName} foi criado como rascunho. Adicione linhas e postos de trabalho.`,
       });
       
-      // Update history
       updateHistory(
         'create',
         `Criação do estudo de tempo ${newStudy.client} - ${newStudy.modelName}`,
@@ -200,7 +191,6 @@ const TimeStudies: React.FC = () => {
     setIsFormOpen(false);
     setSelectedStudy(null);
     
-    // Trigger dashboard update
     window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
@@ -288,11 +278,11 @@ const TimeStudies: React.FC = () => {
       </div>
       
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[700px]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedStudy ? 'Editar Estudo' : 'Criar Novo Estudo'}</DialogTitle>
+            <DialogTitle>{selectedStudy ? 'Editar Estudo' : 'Novo Estudo'}</DialogTitle>
           </DialogHeader>
-          <TimeStudyForm 
+          <TimeStudyForm
             onSubmit={handleFormSubmit}
             onCancel={() => {
               setIsFormOpen(false);
@@ -305,8 +295,7 @@ const TimeStudies: React.FC = () => {
               studyDate: new Date(selectedStudy.studyDate),
               responsiblePerson: selectedStudy.responsiblePerson,
               monthlyDemand: selectedStudy.monthlyDemand,
-              workingDays: selectedStudy.workingDays,
-              shifts: selectedStudy.shifts
+              workingDays: selectedStudy.workingDays
             } : undefined}
           />
         </DialogContent>

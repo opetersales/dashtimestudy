@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Card,
@@ -10,12 +9,25 @@ import {
 import { TimeStudy } from '@/utils/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ShiftToggleList } from './ShiftToggleList';
 
 interface TimeStudyGeneralTabProps {
   study: TimeStudy;
+  onStudyUpdate: (study: TimeStudy) => void;
 }
 
-export function TimeStudyGeneralTab({ study }: TimeStudyGeneralTabProps) {
+export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTabProps) {
+  const handleShiftToggle = (shiftId: string, isActive: boolean) => {
+    const updatedShifts = study.shifts.map(shift =>
+      shift.id === shiftId ? { ...shift, isActive } : shift
+    );
+    
+    onStudyUpdate({
+      ...study,
+      shifts: updatedShifts,
+    });
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
@@ -70,44 +82,20 @@ export function TimeStudyGeneralTab({ study }: TimeStudyGeneralTabProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Turnos Configurados</CardTitle>
-          <CardDescription>Informações sobre os turnos de trabalho</CardDescription>
+          <CardTitle>Turnos</CardTitle>
+          <CardDescription>Gerencie os turnos de trabalho</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {study.shifts.map((shift) => (
-              <div key={shift.id} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">{shift.name}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs ${shift.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'}`}>
-                    {shift.isActive ? 'Ativo' : 'Inativo'}
-                  </span>
-                </div>
-                <div className="mt-2">
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <div>
-                      <dt className="text-sm text-muted-foreground">Horas Trabalhadas</dt>
-                      <dd>{shift.hours} horas</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-muted-foreground">Takt Time</dt>
-                      <dd>{shift.taktTime ? `${shift.taktTime.toFixed(2)} seg` : 'Não calculado'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-muted-foreground">Produção Estimada</dt>
-                      <dd>{shift.estimatedProduction ? shift.estimatedProduction.toLocaleString() : 'Não calculado'}</dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-            ))}
-            
-            {study.shifts.length === 0 && (
-              <p className="text-center text-muted-foreground py-4">
-                Nenhum turno configurado
-              </p>
-            )}
-          </div>
+          {study.shifts.length > 0 ? (
+            <ShiftToggleList 
+              shifts={study.shifts} 
+              onShiftToggle={handleShiftToggle}
+            />
+          ) : (
+            <p className="text-center text-muted-foreground py-4">
+              Nenhum turno configurado
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
