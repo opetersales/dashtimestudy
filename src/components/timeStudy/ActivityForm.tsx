@@ -26,7 +26,6 @@ import { Activity } from '@/utils/types';
 const MAX_COLLECTIONS = 10;
 
 const activityFormSchema = z.object({
-  stationNumber: z.string().min(1, "Número da estação é obrigatório"),
   description: z.string().min(1, "Descrição é obrigatória"),
   type: z.enum(["Manual", "Maquinário"], {
     required_error: "Tipo de trabalho é obrigatório",
@@ -51,10 +50,12 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
   const form = useForm<ActivityFormValues>({
     resolver: zodResolver(activityFormSchema),
     defaultValues: {
-      stationNumber: initialData?.stationNumber || '',
       description: initialData?.description || '',
       type: initialData?.type || 'Manual',
-      collections: initialData?.collections || [0],
+      // Convert TimeCollection[] to number[] for the form
+      collections: initialData?.collections 
+        ? initialData.collections.map(c => typeof c === 'number' ? c : 0) 
+        : [0],
       pfdFactor: initialData?.pfdFactor || 0.1,
     },
   });
@@ -73,23 +74,26 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
     form.setValue('collections', currentCollections.filter((_, i) => i !== index));
   };
 
+  const handleFormSubmit = (values: ActivityFormValues) => {
+    // Create an Activity object from the form values
+    const activityData: Activity = {
+      id: initialData?.id || `activity-${Date.now()}`,
+      description: values.description,
+      type: values.type,
+      // Create TimeCollection objects from the number values
+      collections: values.collections.map(value => ({ 
+        id: `collection-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        value 
+      })),
+      pfdFactor: values.pfdFactor,
+    };
+
+    onSubmit(activityData);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="stationNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Número da Estação</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="Ex: 01" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="description"
