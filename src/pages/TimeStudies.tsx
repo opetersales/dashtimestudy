@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
-import { Plus, Edit, Trash2, FileExport } from 'lucide-react';
+import { Plus, Edit, Trash2, FileText } from 'lucide-react';
 import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
 import { TimeStudy } from '@/utils/types';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
 
-const TimeStudies = () => {
+const TimeStudies: React.FC = () => {
   const [studies, setStudies] = useState<TimeStudy[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedStudy, setSelectedStudy] = useState<TimeStudy | null>(null);
@@ -245,7 +245,7 @@ const TimeStudies = () => {
                       size="icon" 
                       onClick={(e) => handleExportStudy(e, study)}
                     >
-                      <FileExport className="h-4 w-4" />
+                      <FileText className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardTitle>
@@ -299,7 +299,15 @@ const TimeStudies = () => {
               setSelectedStudy(null);
             }}
             isEdit={!!selectedStudy}
-            initialData={selectedStudy || undefined}
+            initialData={selectedStudy ? {
+              client: selectedStudy.client,
+              modelName: selectedStudy.modelName,
+              studyDate: new Date(selectedStudy.studyDate),
+              responsiblePerson: selectedStudy.responsiblePerson,
+              monthlyDemand: selectedStudy.monthlyDemand,
+              workingDays: selectedStudy.workingDays,
+              shifts: selectedStudy.shifts
+            } : undefined}
           />
         </DialogContent>
       </Dialog>
