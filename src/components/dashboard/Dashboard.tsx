@@ -310,7 +310,7 @@ export function Dashboard() {
       .slice(0, 5);
       
     // Most active users
-    const userActivity = {};
+    const userActivity: Record<string, { creations: number, edits: number }> = {};
     studies.forEach(study => {
       const creator = study.createdBy;
       if (creator) {

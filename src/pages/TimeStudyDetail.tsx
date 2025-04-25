@@ -17,7 +17,8 @@ import {
   CardContent, 
   CardDescription, 
   CardHeader, 
-  CardTitle 
+  CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
@@ -90,22 +91,24 @@ const TimeStudyDetail = () => {
   const handleSaveStudy = (updatedData: Partial<TimeStudy> = {}, newStatus?: 'draft' | 'active' | 'archived') => {
     if (!study) return;
 
+    let processedData = {...updatedData};
+    if (updatedData.studyDate && updatedData.studyDate instanceof Date) {
+      processedData.studyDate = updatedData.studyDate.toISOString();
+    }
+
     const updatedStudy = {
       ...study,
-      ...updatedData,
+      ...processedData,
       updatedAt: new Date().toISOString(),
       status: newStatus || study.status
     };
 
-    // Update study in localStorage
     const allStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
     const updatedStudies = allStudies.map(s => s.id === study.id ? updatedStudy : s);
     saveToLocalStorage('timeStudies', updatedStudies);
 
-    // Update local state
     setStudy(updatedStudy as TimeStudy);
 
-    // Record history
     updateHistory(
       'edit',
       `Edição do estudo ${updatedStudy.client} - ${updatedStudy.modelName}`,
@@ -117,7 +120,6 @@ const TimeStudyDetail = () => {
       description: "As alterações foram salvas com sucesso.",
     });
     
-    // Trigger dashboard update
     window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
@@ -142,7 +144,6 @@ const TimeStudyDetail = () => {
     setIsDeleteDialogOpen(false);
     navigate('/time-studies');
     
-    // Trigger dashboard update
     window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
@@ -150,7 +151,6 @@ const TimeStudyDetail = () => {
     if (!study) return;
     setIsExporting(true);
     
-    // Create a blob with the study data
     const blob = new Blob([JSON.stringify(study, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
@@ -176,7 +176,6 @@ const TimeStudyDetail = () => {
     setIsExporting(false);
   };
 
-  // Production Lines
   const handleNewLineSubmit = (data: ProductionLine) => {
     if (!study) return;
     
@@ -216,7 +215,6 @@ const TimeStudyDetail = () => {
     setSelectedLine(null);
   };
 
-  // Workstations
   const handleNewWorkstationSubmit = (data: Workstation) => {
     if (!study || !selectedLine) return;
     
@@ -274,7 +272,6 @@ const TimeStudyDetail = () => {
     setSelectedWorkstation(null);
   };
 
-  // Activities
   const handleNewActivitySubmit = (data: Activity) => {
     if (!study || !selectedLine || !selectedWorkstation) return;
     
@@ -350,7 +347,6 @@ const TimeStudyDetail = () => {
     setSelectedActivity(null);
   };
 
-  // Shifts
   const handleNewShiftSubmit = (data: Shift) => {
     if (!study) return;
     
@@ -426,7 +422,6 @@ const TimeStudyDetail = () => {
             <TabsTrigger value="shifts">Turnos</TabsTrigger>
           </TabsList>
 
-          {/* Production Lines Tab */}
           <TabsContent value="lines" className="space-y-4">
             <div className="flex justify-end mb-4">
               <Button onClick={() => setIsLineFormOpen(true)}>
@@ -464,7 +459,6 @@ const TimeStudyDetail = () => {
                           <span className="text-muted-foreground">Cycle Time:</span>
                           <span>{line.cycleTime}</span>
                         </div>
-                        {/* Add more line details here */}
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between">
@@ -511,7 +505,6 @@ const TimeStudyDetail = () => {
             )}
           </TabsContent>
 
-          {/* Shifts Tab */}
           <TabsContent value="shifts" className="space-y-4">
             <div className="flex justify-end mb-4">
               <Button onClick={() => setIsShiftFormOpen(true)}>
@@ -545,7 +538,6 @@ const TimeStudyDetail = () => {
                           <span className="text-muted-foreground">Ativo:</span>
                           <span>{shift.isActive ? 'Sim' : 'Não'}</span>
                         </div>
-                        {/* Add more shift details here */}
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between">
@@ -597,7 +589,6 @@ const TimeStudyDetail = () => {
 
       {renderContent()}
 
-      {/* Delete Study Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -617,7 +608,6 @@ const TimeStudyDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Line Form Dialog */}
       <Dialog open={isLineFormOpen} onOpenChange={() => setIsLineFormOpen(false)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -634,7 +624,6 @@ const TimeStudyDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Workstation Form Dialog */}
       <Dialog open={isWorkstationFormOpen} onOpenChange={() => setIsWorkstationFormOpen(false)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -651,7 +640,6 @@ const TimeStudyDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Activity Form Dialog */}
       <Dialog open={isActivityFormOpen} onOpenChange={() => setIsActivityFormOpen(false)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -668,7 +656,6 @@ const TimeStudyDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Shift Form Dialog */}
       <Dialog open={isShiftFormOpen} onOpenChange={() => setIsShiftFormOpen(false)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>

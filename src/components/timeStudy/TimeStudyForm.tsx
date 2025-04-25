@@ -45,21 +45,31 @@ interface TimeStudyFormProps {
   onSubmit: (data: TimeStudyFormValues, isDraft?: boolean) => void;
   onCancel?: () => void;
   isEdit?: boolean; // New prop to distinguish between create and edit modes
-  initialData?: Partial<TimeStudyFormValues>;
+  initialData?: Partial<TimeStudyFormValues> & { studyDate?: Date | string };
 }
 
 export const TimeStudyForm = ({ onSubmit, onCancel, isEdit = false, initialData }: TimeStudyFormProps) => {
   const [activeTab, setActiveTab] = useState('general');
 
+  // Process initialData to handle both Date and string types for studyDate
+  const processedInitialData = initialData ? {
+    ...initialData,
+    studyDate: initialData.studyDate 
+      ? initialData.studyDate instanceof Date 
+        ? initialData.studyDate 
+        : new Date(initialData.studyDate)
+      : new Date()
+  } : undefined;
+
   const form = useForm<TimeStudyFormValues>({
     resolver: zodResolver(timeStudySchema),
     defaultValues: {
-      client: initialData?.client || "",
-      modelName: initialData?.modelName || "",
-      studyDate: initialData?.studyDate ? new Date(initialData.studyDate) : new Date(),
-      responsiblePerson: initialData?.responsiblePerson || "",
-      monthlyDemand: initialData?.monthlyDemand || undefined,
-      workingDays: initialData?.workingDays || 22,
+      client: processedInitialData?.client || "",
+      modelName: processedInitialData?.modelName || "",
+      studyDate: processedInitialData?.studyDate || new Date(),
+      responsiblePerson: processedInitialData?.responsiblePerson || "",
+      monthlyDemand: processedInitialData?.monthlyDemand || undefined,
+      workingDays: processedInitialData?.workingDays || 22,
     }
   });
 

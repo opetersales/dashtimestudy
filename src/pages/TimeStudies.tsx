@@ -69,12 +69,12 @@ const TimeStudies = () => {
     saveToLocalStorage('history', history);
   };
 
-  const handleFormSubmit = (data: Partial<TimeStudy>) => {
+  const handleFormSubmit = (data: any, isDraft: boolean = true) => {
     const newStudy: TimeStudy = {
       id: `study-${Date.now()}`,
       client: data.client || '',
       modelName: data.modelName || '',
-      studyDate: data.studyDate || new Date().toISOString(),
+      studyDate: data.studyDate instanceof Date ? data.studyDate.toISOString() : new Date(data.studyDate).toISOString(),
       responsiblePerson: data.responsiblePerson || '',
       monthlyDemand: data.monthlyDemand || 0,
       workingDays: data.workingDays || 22,
