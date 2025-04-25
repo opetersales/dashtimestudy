@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BasePage } from '@/components/layout/BasePage';
@@ -32,7 +33,6 @@ import { TimeStudy, ProductionLine, Workstation, Activity, Shift } from '@/utils
 import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Input } from '@/components/ui/input';
 
 const TimeStudyDetail = () => {
   const { id } = useParams();
@@ -92,7 +92,7 @@ const TimeStudyDetail = () => {
     if (!study) return;
 
     let processedData = {...updatedData};
-    if (updatedData.studyDate && updatedData.studyDate instanceof Date) {
+    if (updatedData.studyDate && typeof updatedData.studyDate === 'object') {
       processedData.studyDate = updatedData.studyDate.toISOString();
     }
 
@@ -411,7 +411,7 @@ const TimeStudyDetail = () => {
                 workingDays: study.workingDays,
               }}
               onSubmit={handleGeneralFormSubmit}
-              isEdit={true} // Pass isEdit=true here for edit mode
+              isEdit={true}
             />
           </CardContent>
         </Card>

@@ -42,12 +42,17 @@ const Index = () => {
     saveToLocalStorage('history', history);
   };
 
-  const handleFormSubmit = (data: any, isDraft: boolean = true) => {
+  const handleFormSubmit = (data: any) => {
+    // Processar a data para garantir que seja string
+    const studyDate = data.studyDate instanceof Date
+      ? data.studyDate.toISOString()
+      : new Date(data.studyDate).toISOString();
+
     const newStudy: TimeStudy = {
       id: `study-${Date.now()}`,
       client: data.client || '',
       modelName: data.modelName || '',
-      studyDate: data.studyDate instanceof Date ? data.studyDate.toISOString() : new Date(data.studyDate).toISOString(),
+      studyDate: studyDate,
       responsiblePerson: data.responsiblePerson || '',
       monthlyDemand: data.monthlyDemand || 0,
       workingDays: data.workingDays || 22,
@@ -104,7 +109,7 @@ const Index = () => {
           <TimeStudyForm 
             onSubmit={handleFormSubmit}
             onCancel={() => setIsFormOpen(false)}
-            isEdit={false} // Explicitly set to false for creation
+            isEdit={false}
           />
         </DialogContent>
       </Dialog>

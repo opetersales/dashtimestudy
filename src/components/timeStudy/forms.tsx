@@ -32,14 +32,14 @@ const productionLineSchema = z.object({
 });
 
 const workstationSchema = z.object({
-  number: z.coerce.number().int().positive("Número deve ser positivo"),
+  number: z.string().min(1, "Número do posto é obrigatório"),
   name: z.string().min(1, "Nome do posto é obrigatório"),
   notes: z.string().optional(),
 });
 
 const activitySchema = z.object({
   description: z.string().min(1, "Descrição da atividade é obrigatória"),
-  type: z.enum(["value-added", "non-value-added", "waste"], {
+  type: z.enum(["Manual", "Maquinário"], {
     required_error: "Tipo de atividade é obrigatório",
   }),
   pfdFactor: z.coerce.number().min(0, "Fator PF&D não pode ser negativo").max(1, "Fator PF&D não pode ser maior que 1"),
@@ -147,7 +147,7 @@ export const WorkstationForm: React.FC<WorkstationFormProps> = ({
   const form = useForm<z.infer<typeof workstationSchema>>({
     resolver: zodResolver(workstationSchema),
     defaultValues: {
-      number: initialData?.number || 1,
+      number: initialData?.number || '',
       name: initialData?.name || '',
       notes: initialData?.notes || '',
     },
@@ -175,7 +175,7 @@ export const WorkstationForm: React.FC<WorkstationFormProps> = ({
             <FormItem>
               <FormLabel>Número do Posto</FormLabel>
               <FormControl>
-                <Input type="number" min="1" {...field} />
+                <Input {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -245,7 +245,7 @@ export const ActivityForm: React.FC<ActivityFormProps> = ({
     resolver: zodResolver(activitySchema),
     defaultValues: {
       description: initialData?.description || '',
-      type: initialData?.type as any || 'value-added',
+      type: (initialData?.type as "Manual" | "Maquinário") || 'Manual',
       pfdFactor: initialData?.pfdFactor || 0.1,
     },
   });
@@ -292,9 +292,8 @@ export const ActivityForm: React.FC<ActivityFormProps> = ({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="value-added">Agrega Valor</SelectItem>
-                  <SelectItem value="non-value-added">Não Agrega Valor</SelectItem>
-                  <SelectItem value="waste">Desperdício</SelectItem>
+                  <SelectItem value="Manual">Manual</SelectItem>
+                  <SelectItem value="Maquinário">Maquinário</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

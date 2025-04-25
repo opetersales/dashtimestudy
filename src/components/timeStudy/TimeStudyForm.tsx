@@ -44,7 +44,7 @@ type TimeStudyFormValues = z.infer<typeof timeStudySchema>;
 interface TimeStudyFormProps {
   onSubmit: (data: TimeStudyFormValues, isDraft?: boolean) => void;
   onCancel?: () => void;
-  isEdit?: boolean; // New prop to distinguish between create and edit modes
+  isEdit?: boolean;
   initialData?: Partial<TimeStudyFormValues> & { studyDate?: Date | string };
 }
 
@@ -55,9 +55,9 @@ export const TimeStudyForm = ({ onSubmit, onCancel, isEdit = false, initialData 
   const processedInitialData = initialData ? {
     ...initialData,
     studyDate: initialData.studyDate 
-      ? initialData.studyDate instanceof Date 
-        ? initialData.studyDate 
-        : new Date(initialData.studyDate)
+      ? typeof initialData.studyDate === 'string'
+        ? new Date(initialData.studyDate)
+        : initialData.studyDate
       : new Date()
   } : undefined;
 
@@ -74,8 +74,6 @@ export const TimeStudyForm = ({ onSubmit, onCancel, isEdit = false, initialData 
   });
 
   const handleSubmit = (data: TimeStudyFormValues) => {
-    // In create mode, we just submit the data
-    // The higher-level component will handle creating it as active or draft
     onSubmit(data);
   };
   
@@ -259,15 +257,20 @@ export const TimeStudyForm = ({ onSubmit, onCancel, isEdit = false, initialData 
                   </Button>
                 )}
                 
-                {/* In edit mode, show both draft and publish buttons */}
-                {isEdit ? (
+                {/* Na tela de criação inicial, mostrar apenas o botão Criar Estudo */}
+                {!isEdit ? (
+                  <Button type="submit">
+                    Criar Estudo
+                  </Button>
+                ) : (
+                  /* Na tela de edição, mostrar os botões de Salvar como Rascunho e Publicar */
                   <>
                     <Button 
                       type="button" 
                       variant="secondary"
                       onClick={handleDraftSubmit}
                     >
-                      Salvar Rascunho
+                      Salvar como Rascunho
                     </Button>
                     <Button 
                       type="button" 
@@ -277,11 +280,6 @@ export const TimeStudyForm = ({ onSubmit, onCancel, isEdit = false, initialData 
                       Publicar Estudo
                     </Button>
                   </>
-                ) : (
-                  /* In create mode, just show a single Create button */
-                  <Button type="submit">
-                    Criar Estudo
-                  </Button>
                 )}
               </div>
             </form>

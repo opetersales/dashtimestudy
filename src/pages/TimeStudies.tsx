@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
-import { TimeStudy, Shift } from '@/utils/types';
+import { TimeStudy } from '@/utils/types';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -69,12 +70,17 @@ const TimeStudies = () => {
     saveToLocalStorage('history', history);
   };
 
-  const handleFormSubmit = (data: any, isDraft: boolean = true) => {
+  const handleFormSubmit = (data: any) => {
+    // Processar a data para garantir que seja string
+    const studyDate = data.studyDate instanceof Date
+      ? data.studyDate.toISOString()
+      : new Date(data.studyDate).toISOString();
+      
     const newStudy: TimeStudy = {
       id: `study-${Date.now()}`,
       client: data.client || '',
       modelName: data.modelName || '',
-      studyDate: data.studyDate instanceof Date ? data.studyDate.toISOString() : new Date(data.studyDate).toISOString(),
+      studyDate: studyDate,
       responsiblePerson: data.responsiblePerson || '',
       monthlyDemand: data.monthlyDemand || 0,
       workingDays: data.workingDays || 22,
