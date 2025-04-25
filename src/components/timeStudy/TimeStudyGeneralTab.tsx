@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Card,
@@ -9,7 +10,8 @@ import {
 import { TimeStudy } from '@/utils/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ShiftToggleList } from './ShiftToggleList';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/use-toast';
 
 interface TimeStudyGeneralTabProps {
   study: TimeStudy;
@@ -17,15 +19,24 @@ interface TimeStudyGeneralTabProps {
 }
 
 export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTabProps) {
-  const handleShiftToggle = (shiftId: string, isActive: boolean) => {
+  const { toast } = useToast();
+
+  const handleShiftToggle = (shiftId: string) => {
     const updatedShifts = study.shifts.map(shift =>
-      shift.id === shiftId ? { ...shift, isActive } : shift
+      shift.id === shiftId ? { ...shift, isActive: !shift.isActive } : shift
     );
     
     onStudyUpdate({
       ...study,
       shifts: updatedShifts,
     });
+
+    const toggledShift = study.shifts.find(s => s.id === shiftId);
+    if (toggledShift) {
+      toast({
+        description: `Turno ${toggledShift.name} ${!toggledShift.isActive ? 'ativado' : 'desativado'} com sucesso.`,
+      });
+    }
   };
 
   return (
@@ -67,15 +78,6 @@ export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTa
               <dt className="text-sm font-medium text-muted-foreground">Demanda Diária</dt>
               <dd className="mt-1 text-base">{study.dailyDemand?.toLocaleString() || 0} unidades</dd>
             </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Status</dt>
-              <dd className="mt-1 capitalize">
-                <span className="px-2 py-1 rounded-full text-xs bg-muted">
-                  {study.status === 'draft' ? 'Rascunho' : 
-                   study.status === 'active' ? 'Ativo' : 'Arquivado'}
-                </span>
-              </dd>
-            </div>
           </dl>
         </CardContent>
       </Card>
@@ -86,16 +88,31 @@ export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTa
           <CardDescription>Gerencie os turnos de trabalho</CardDescription>
         </CardHeader>
         <CardContent>
-          {study.shifts.length > 0 ? (
-            <ShiftToggleList 
-              shifts={study.shifts} 
-              onShiftToggle={handleShiftToggle}
-            />
-          ) : (
-            <p className="text-center text-muted-foreground py-4">
-              Nenhum turno configurado
-            </p>
-          )}
+          <div className="space-y-4">
+            {study.shifts.map((shift) => (
+              <div
+                key={shift.id}
+                className="flex items-center justify-between p-4 rounded-lg border bg-card"
+              >
+                <div className="space-y-1">
+                  <p className="font-medium">{shift.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {shift.hours} horas
+                  </p>
+                </div>
+                <Switch
+                  checked={shift.isActive}
+                  onCheckedChange={() => handleShiftToggle(shift.id)}
+                  aria-label={`Ativar ${shift.name}`}
+                />
+              </div>
+            ))}
+            {study.shifts.length === 0 && (
+              <p className="text-center text-muted-foreground py-4">
+                Nenhum turno configurado
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

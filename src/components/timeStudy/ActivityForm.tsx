@@ -52,9 +52,8 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
     defaultValues: {
       description: initialData?.description || '',
       type: initialData?.type || 'Manual',
-      // Convert TimeCollection[] to number[] for the form
       collections: initialData?.collections 
-        ? initialData.collections.map(c => typeof c === 'number' ? c : 0) 
+        ? initialData.collections.map(c => typeof c === 'object' ? c.value : c) 
         : [0],
       pfdFactor: initialData?.pfdFactor || 0.1,
     },
@@ -75,12 +74,10 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
   };
 
   const handleFormSubmit = (values: ActivityFormValues) => {
-    // Create an Activity object from the form values
     const activityData: Activity = {
       id: initialData?.id || `activity-${Date.now()}`,
       description: values.description,
       type: values.type,
-      // Create TimeCollection objects from the number values
       collections: values.collections.map(value => ({ 
         id: `collection-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         value 
@@ -132,7 +129,7 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <FormLabel>Coletas de Tempo</FormLabel>
+            <FormLabel>Coletas de Tempo (segundos)</FormLabel>
             {collectionsCount < MAX_COLLECTIONS && (
               <Button
                 type="button"
@@ -188,19 +185,20 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
           name="pfdFactor"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fator PF&D</FormLabel>
+              <FormLabel>Fator PF&D (%)</FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   min="0"
-                  max="1"
-                  step="0.01"
+                  max="100"
+                  step="1"
                   {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  value={field.value * 100}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value) / 100)}
                 />
               </FormControl>
               <FormDescription>
-                Fator de fadiga e necessidades pessoais (entre 0 e 1)
+                Fator de fadiga e necessidades pessoais (entre 0% e 100%)
               </FormDescription>
               <FormMessage />
             </FormItem>
