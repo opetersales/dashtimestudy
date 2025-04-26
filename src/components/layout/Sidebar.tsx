@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -14,12 +15,37 @@ import {
   LucideIcon
 } from 'lucide-react';
 
+// Custom hook to manage sidebar state with localStorage persistence
+const useSidebarState = () => {
+  const [collapsed, setCollapsed] = useState(() => {
+    // Try to get stored state from localStorage
+    const storedState = localStorage.getItem('sidebarCollapsed');
+    return storedState ? JSON.parse(storedState) : false;
+  });
+
+  // Save to localStorage when state changes
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(collapsed));
+  }, [collapsed]);
+
+  const toggleSidebar = () => setCollapsed(prev => !prev);
+
+  return { collapsed, toggleSidebar };
+};
+
 interface SidebarProps {
-  collapsed: boolean;
-  onToggle: () => void;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed: controlledCollapsed, onToggle }: SidebarProps) {
+  // Use internal state if not controlled from outside
+  const { collapsed: internalCollapsed, toggleSidebar: internalToggle } = useSidebarState();
+  
+  // Determine if we're using controlled or uncontrolled behavior
+  const collapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
+  const onToggleClick = onToggle || internalToggle;
+
   return (
     <div
       className={cn(
@@ -32,9 +58,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={onToggle}
+          onClick={onToggleClick}
           className="text-sidebar-foreground"
           title={collapsed ? "Expandir menu" : "Recolher menu"}
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
         >
           {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </Button>
@@ -72,9 +99,10 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
         "flex items-center p-2 rounded-md transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         isActive && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
       )}
+      aria-current={isActive ? "page" : undefined}
     >
-      <Icon size={20} />
-      {!collapsed && <span className="ml-3">{label}</span>}
+      <Icon size={20} aria-hidden="true" />
+      {!collapsed && <span className="ml-3 transition-opacity duration-200">{label}</span>}
     </Link>
   );
 
@@ -82,11 +110,11 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
   if (collapsed) {
     return (
       <TooltipProvider>
-        <Tooltip>
+        <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             {item}
           </TooltipTrigger>
-          <TooltipContent side="right">
+          <TooltipContent side="right" className="bg-popover text-popover-foreground">
             {label}
           </TooltipContent>
         </Tooltip>

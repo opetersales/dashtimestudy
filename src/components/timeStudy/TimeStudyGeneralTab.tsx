@@ -127,9 +127,21 @@ export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTa
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Turnos</CardTitle>
-          <CardDescription>Gerencie os turnos de trabalho</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Turnos</CardTitle>
+            <CardDescription>Gerencie os turnos de trabalho</CardDescription>
+          </div>
+          <Button 
+            onClick={() => {
+              setEditingShift(null);
+              setIsShiftDialogOpen(true);
+            }}
+            size="sm" 
+            variant="secondary"
+          >
+            Adicionar Turno
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -174,6 +186,11 @@ export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTa
                 </div>
               </div>
             ))}
+            {study.shifts.length === 0 && (
+              <div className="text-center p-6 text-muted-foreground">
+                Nenhum turno cadastrado. Clique em "Adicionar Turno" para começar.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
