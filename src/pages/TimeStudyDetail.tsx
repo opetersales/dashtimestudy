@@ -13,12 +13,14 @@ import { TimeStudyReportsTab } from '@/components/timeStudy/TimeStudyReportsTab'
 import { FileText, Save, Send } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
+import { useToast } from '@/components/ui/use-toast';
 
 const TimeStudyDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [study, setStudy] = useState<TimeStudy | null>(null);
   const [activeTab, setActiveTab] = useState('general');
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -139,7 +141,7 @@ const TimeStudyDetail = () => {
       updatedAt: new Date().toISOString()
     };
     
-    onStudyUpdate(updatedStudy);
+    handleStudyUpdate(updatedStudy);
     toast({
       title: "Estudo publicado",
       description: "O estudo foi publicado com sucesso."
@@ -155,7 +157,7 @@ const TimeStudyDetail = () => {
       updatedAt: new Date().toISOString()
     };
     
-    onStudyUpdate(updatedStudy);
+    handleStudyUpdate(updatedStudy);
     toast({
       title: "Rascunho salvo",
       description: "O estudo foi salvo como rascunho."

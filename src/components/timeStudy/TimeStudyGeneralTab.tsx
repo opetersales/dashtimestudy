@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Card,
@@ -13,6 +14,8 @@ import { TimeStudy, Shift } from '@/utils/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ShiftForm } from './ShiftForm';
 import { useToast } from '@/components/ui/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface TimeStudyGeneralTabProps {
   study: TimeStudy;
