@@ -96,9 +96,16 @@ export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTa
               >
                 <div className="space-y-1">
                   <p className="font-medium">{shift.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {shift.hours} horas
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {shift.hours.toString().replace('.', ',') || shift.hours} horas
+                    </p>
+                    {shift.taktTime && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                        Takt: {shift.taktTime.toFixed(2)}s
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <Switch
                   checked={shift.isActive}

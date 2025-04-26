@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ProductionLine, TimeStudy, Workstation, Activity } from '@/utils/types';
 import {
@@ -8,10 +9,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Trash, Edit } from 'lucide-react';
+import { Plus, Trash, Edit, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   Accordion,
@@ -36,6 +35,14 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
   const [isEditingLine, setIsEditingLine] = useState(false);
   const [currentLine, setCurrentLine] = useState<ProductionLine | null>(null);
   const [currentWorkstation, setCurrentWorkstation] = useState<Workstation | null>(null);
+  const [expandedLines, setExpandedLines] = useState<Record<string, boolean>>({});
+
+  const toggleLineExpansion = (lineId: string) => {
+    setExpandedLines(prev => ({
+      ...prev,
+      [lineId]: !prev[lineId]
+    }));
+  };
 
   const handleAddWorkstation = (lineId: string, workstationData: Partial<Workstation>) => {
     const newWorkstation: Workstation = {
@@ -72,6 +79,12 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
 
     setCurrentLine(null);
     setIsAddingWorkstation(false);
+
+    // Expand the line automatically
+    setExpandedLines(prev => ({
+      ...prev,
+      [lineId]: true
+    }));
   };
 
   const handleAddActivity = (workstationId: string, activityData: Partial<Activity>) => {
@@ -185,133 +198,175 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
         </Card>
       ) : (
         study.productionLines.map(line => (
-          <Card key={line.id}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>{line.name}</CardTitle>
-                {line.notes && <CardDescription>{line.notes}</CardDescription>}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline" 
-                  size="icon"
-                  onClick={() => {
-                    setCurrentLine(line);
-                    setIsEditingLine(true);
-                  }}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleDeleteLine(line.id, line.name)}
-                >
-                  <Trash className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <Button 
-                    variant="outline"
+          <Card 
+            key={line.id} 
+            className="border-2 dark:border-primary/20 dark:bg-card/80 overflow-hidden"
+          >
+            <CardHeader className="bg-secondary/30 dark:bg-primary/10">
+              <div className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <span>🏭 Linha: {line.name}</span>
+                  </CardTitle>
+                  {line.notes && <CardDescription>{line.notes}</CardDescription>}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => toggleLineExpansion(line.id)}
+                    className="dark:bg-primary/20 dark:hover:bg-primary/30"
+                  >
+                    {expandedLines[line.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="outline" 
+                    size="icon"
                     onClick={() => {
                       setCurrentLine(line);
-                      setIsAddingWorkstation(true);
+                      setIsEditingLine(true);
                     }}
+                    className="dark:bg-primary/20 dark:hover:bg-primary/30"
                   >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Posto de Trabalho
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDeleteLine(line.id, line.name)}
+                    className="dark:bg-primary/20 dark:hover:bg-primary/30"
+                  >
+                    <Trash className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+            </CardHeader>
 
-                {line.workstations.length > 0 ? (
-                  <Accordion type="multiple" className="w-full">
-                    {line.workstations.map((workstation) => (
-                      <AccordionItem value={workstation.id} key={workstation.id}>
-                        <AccordionTrigger className="hover:bg-muted/50 px-4 rounded-md">
-                          <div className="flex items-center">
-                            <span className="font-medium">
-                              Posto {workstation.number}
-                              {workstation.name && ` - ${workstation.name}`}
-                            </span>
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              {workstation.activities.length} atividade(s)
-                            </span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-4 pt-2">
-                          <div className="space-y-4">
-                            {workstation.notes && (
-                              <p className="text-sm text-muted-foreground">{workstation.notes}</p>
-                            )}
+            {expandedLines[line.id] && (
+              <CardContent className="p-4 mt-2">
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={() => {
+                        setCurrentLine(line);
+                        setIsAddingWorkstation(true);
+                      }}
+                      variant="outline"
+                      className="dark:bg-primary/20 dark:hover:bg-primary/30"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Posto de Trabalho
+                    </Button>
+                  </div>
 
-                            <div className="flex justify-end mb-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setCurrentWorkstation(workstation);
-                                  setIsAddingActivity(true);
-                                }}
-                              >
-                                <Plus className="mr-2 h-3 w-3" />
-                                Adicionar Atividade
-                              </Button>
-                            </div>
+                  {line.workstations.length > 0 ? (
+                    <div className="pl-4 border-l-2 border-primary/20 dark:border-primary/40">
+                      <Accordion type="multiple" className="w-full">
+                        {line.workstations.map((workstation) => (
+                          <AccordionItem 
+                            value={workstation.id} 
+                            key={workstation.id} 
+                            className="border dark:border-primary/10 rounded-md mb-2 dark:bg-card/40 overflow-hidden"
+                          >
+                            <AccordionTrigger className="hover:bg-muted/50 dark:hover:bg-primary/10 px-4 rounded-md">
+                              <div className="flex items-center">
+                                <span className="font-medium">
+                                  💻 Posto {workstation.number}
+                                  {workstation.name && ` - ${workstation.name}`}
+                                </span>
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  {workstation.activities.length} atividade(s)
+                                </span>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 pt-2 dark:bg-card/60">
+                              <div className="space-y-4">
+                                {workstation.notes && (
+                                  <p className="text-sm text-muted-foreground">{workstation.notes}</p>
+                                )}
 
-                            {workstation.activities.length > 0 ? (
-                              <div className="space-y-2">
-                                {workstation.activities.map((activity) => (
-                                  <div
-                                    key={activity.id}
-                                    className="p-3 border rounded-md"
+                                <div className="flex justify-end mb-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setCurrentWorkstation(workstation);
+                                      setIsAddingActivity(true);
+                                    }}
+                                    className="dark:bg-primary/10 dark:hover:bg-primary/20"
                                   >
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <p className="font-medium">{activity.description}</p>
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                          <span className={`px-2 py-0.5 rounded-full ${
-                                            activity.type === 'Manual' 
-                                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-                                              : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
-                                          }`}>
-                                            {activity.type}
-                                          </span>
-                                          <span>PF&D: {(activity.pfdFactor * 100).toFixed(0)}%</span>
-                                          <span>{activity.collections.length} coleta(s)</span>
+                                    <Plus className="mr-2 h-3 w-3" />
+                                    Adicionar Atividade
+                                  </Button>
+                                </div>
+
+                                {workstation.activities.length > 0 ? (
+                                  <div className="space-y-2 pl-4 border-l border-dashed border-primary/20 dark:border-primary/30">
+                                    {workstation.activities.map((activity) => (
+                                      <div
+                                        key={activity.id}
+                                        className="p-3 border rounded-md dark:bg-card/80 dark:border-primary/10"
+                                      >
+                                        <div className="flex justify-between items-center">
+                                          <div>
+                                            <p className="font-medium">📋 {activity.description}</p>
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                              <span className={`px-2 py-0.5 rounded-full ${
+                                                activity.type === 'Manual' 
+                                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/70 dark:text-blue-300'
+                                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-900/70 dark:text-amber-300'
+                                              }`}>
+                                                {activity.type}
+                                              </span>
+                                              <span>PF&D: {(activity.pfdFactor * 100).toFixed(0)}%</span>
+                                              <span>{activity.collections.length} coleta(s)</span>
+                                            </div>
+                                          </div>
+                                          <div className="flex gap-1">
+                                            <Button 
+                                              variant="ghost" 
+                                              size="icon"
+                                              className="dark:hover:bg-primary/20"
+                                            >
+                                              <Edit className="h-3 w-3" />
+                                            </Button>
+                                            <Button 
+                                              variant="ghost" 
+                                              size="icon"
+                                              className="dark:hover:bg-destructive/20 dark:text-destructive/70"
+                                            >
+                                              <Trash className="h-3 w-3" />
+                                            </Button>
+                                          </div>
                                         </div>
                                       </div>
-                                      <div className="flex gap-1">
-                                        <Button variant="ghost" size="icon">
-                                          <Edit className="h-3 w-3" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon">
-                                          <Trash className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
+                                    ))}
                                   </div>
-                                ))}
+                                ) : (
+                                  <p className="text-sm text-center text-muted-foreground py-4">
+                                    Nenhuma atividade cadastrada
+                                  </p>
+                                )}
                               </div>
-                            ) : (
-                              <p className="text-sm text-center text-muted-foreground py-4">
-                                Nenhuma atividade cadastrada
-                              </p>
-                            )}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                ) : (
-                  <p className="text-center text-muted-foreground py-4">
-                    Nenhum posto de trabalho cadastrado
-                  </p>
-                )}
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    </div>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4">
+                      Nenhum posto de trabalho cadastrado
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            )}
+            
+            {!expandedLines[line.id] && line.workstations.length > 0 && (
+              <div className="px-6 py-3 border-t dark:border-primary/10 text-sm text-muted-foreground">
+                {line.workstations.length} posto(s) de trabalho • Clique no botão de expandir para visualizar
               </div>
-            </CardContent>
+            )}
           </Card>
         ))
       )}

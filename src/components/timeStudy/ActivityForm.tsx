@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Activity } from '@/utils/types';
+import { Plus, Trash2 } from 'lucide-react';
 
 const MAX_COLLECTIONS = 10;
 
@@ -30,7 +31,10 @@ const activityFormSchema = z.object({
   type: z.enum(["Manual", "Maquinário"], {
     required_error: "Tipo de trabalho é obrigatório",
   }),
-  collections: z.array(z.number().min(0, "Tempo deve ser positivo"))
+  collections: z.array(z.number({
+    required_error: "Tempo é obrigatório",
+    invalid_type_error: "Tempo deve ser um número"
+  }).min(0, "Tempo deve ser positivo"))
     .min(1, "Pelo menos uma coleta é necessária")
     .max(MAX_COLLECTIONS, `Máximo de ${MAX_COLLECTIONS} coletas permitidas`),
   pfdFactor: z.number()
@@ -96,7 +100,7 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Descrição da Atividade</FormLabel>
+              <FormLabel>Descrição da Atividade*</FormLabel>
               <FormControl>
                 <Input {...field} placeholder="Descreva a atividade" />
               </FormControl>
@@ -110,7 +114,7 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
           name="type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo de Trabalho</FormLabel>
+              <FormLabel>Tipo de Trabalho*</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -129,7 +133,7 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <FormLabel>Coletas de Tempo (segundos)</FormLabel>
+            <FormLabel>Coletas de Tempo (segundos)*</FormLabel>
             {collectionsCount < MAX_COLLECTIONS && (
               <Button
                 type="button"
@@ -137,12 +141,12 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
                 size="sm"
                 onClick={addCollection}
               >
-                Adicionar Coleta
+                <Plus className="h-4 w-4 mr-1" /> Adicionar Coleta
               </Button>
             )}
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {form.watch('collections').map((_, index) => (
               <FormField
                 key={index}
@@ -158,7 +162,8 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
                           min="0"
                           step="0.01"
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          className="w-full"
                         />
                       </FormControl>
                       {index > 0 && (
@@ -167,8 +172,9 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
                           variant="destructive"
                           size="icon"
                           onClick={() => removeCollection(index)}
+                          className="flex-shrink-0"
                         >
-                          ×
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -185,18 +191,24 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
           name="pfdFactor"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fator PF&D (%)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  {...field}
-                  value={field.value * 100}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) / 100)}
-                />
-              </FormControl>
+              <FormLabel>Fator PF&D (%)*</FormLabel>
+              <div className="relative">
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    {...field}
+                    value={field.value * 100}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) / 100 || 0)}
+                    className="pr-8"
+                  />
+                </FormControl>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
+                  %
+                </div>
+              </div>
               <FormDescription>
                 Fator de fadiga e necessidades pessoais (entre 0% e 100%)
               </FormDescription>
@@ -210,7 +222,7 @@ export function ActivityForm({ onSubmit, onCancel, initialData }: ActivityFormPr
             Cancelar
           </Button>
           <Button type="submit">
-            {initialData ? 'Salvar' : 'Criar'} Atividade
+            {initialData ? 'Atualizar' : 'Criar'} Atividade
           </Button>
         </div>
       </form>
