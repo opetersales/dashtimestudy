@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ProductionLine, TimeStudy, Workstation, Activity } from '@/utils/types';
 import {
@@ -10,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Trash, Edit, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash, Edit, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   Accordion,
@@ -80,7 +79,6 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
     setCurrentLine(null);
     setIsAddingWorkstation(false);
 
-    // Expand the line automatically
     setExpandedLines(prev => ({
       ...prev,
       [lineId]: true
@@ -127,6 +125,60 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
 
     setCurrentWorkstation(null);
     setIsAddingActivity(false);
+  };
+
+  const handleEditActivity = (workstationId: string, activity: Activity) => {
+    const updatedLines = study.productionLines.map(line => ({
+      ...line,
+      workstations: line.workstations.map(ws => {
+        if (ws.id === workstationId) {
+          return {
+            ...ws,
+            activities: ws.activities.map(act => 
+              act.id === activity.id ? { ...activity } : act
+            )
+          };
+        }
+        return ws;
+      })
+    }));
+
+    onStudyUpdate({
+      ...study,
+      productionLines: updatedLines,
+      updatedAt: new Date().toISOString()
+    });
+  
+    updateHistory('update', `Atualizada atividade "${activity.description}"`);
+    toast({
+      description: "Atividade atualizada com sucesso."
+    });
+  };
+
+  const handleDeleteActivity = (workstationId: string, activityId: string, activityName: string) => {
+    const updatedLines = study.productionLines.map(line => ({
+      ...line,
+      workstations: line.workstations.map(ws => {
+        if (ws.id === workstationId) {
+          return {
+            ...ws,
+            activities: ws.activities.filter(act => act.id !== activityId)
+          };
+        }
+        return ws;
+      })
+    }));
+
+    onStudyUpdate({
+      ...study,
+      productionLines: updatedLines,
+      updatedAt: new Date().toISOString()
+    });
+  
+    updateHistory('delete', `Removida atividade "${activityName}"`);
+    toast({
+      description: "Atividade removida com sucesso."
+    });
   };
 
   const handleUpdateLine = (lineData: Partial<ProductionLine>) => {
@@ -326,6 +378,7 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
                                             <Button 
                                               variant="ghost" 
                                               size="icon"
+                                              onClick={() => handleEditActivity(workstation.id, activity)}
                                               className="dark:hover:bg-primary/20"
                                             >
                                               <Edit className="h-3 w-3" />
@@ -333,9 +386,10 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
                                             <Button 
                                               variant="ghost" 
                                               size="icon"
+                                              onClick={() => handleDeleteActivity(workstation.id, activity.id, activity.description)}
                                               className="dark:hover:bg-destructive/20 dark:text-destructive/70"
                                             >
-                                              <Trash className="h-3 w-3" />
+                                              <Trash2 className="h-3 w-3" />
                                             </Button>
                                           </div>
                                         </div>
@@ -371,7 +425,6 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
         ))
       )}
 
-      {/* Add workstation dialog */}
       <Dialog open={isAddingWorkstation} onOpenChange={setIsAddingWorkstation}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -387,7 +440,6 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
         </DialogContent>
       </Dialog>
 
-      {/* Edit line dialog */}
       <Dialog open={isEditingLine} onOpenChange={setIsEditingLine}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -404,7 +456,6 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
         </DialogContent>
       </Dialog>
 
-      {/* Add activity dialog */}
       <Dialog open={isAddingActivity} onOpenChange={setIsAddingActivity}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>

@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -7,10 +6,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { TimeStudy } from '@/utils/types';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Switch } from '@/components/ui/switch';
+import { Switch } from "@/components/ui/switch";
+import { Button } from '@/components/ui/button';
+import { Edit, Trash2 } from 'lucide-react';
+import { TimeStudy, Shift } from '@/utils/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ShiftForm } from './ShiftForm';
 import { useToast } from '@/components/ui/use-toast';
 
 interface TimeStudyGeneralTabProps {
@@ -20,6 +21,8 @@ interface TimeStudyGeneralTabProps {
 
 export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTabProps) {
   const { toast } = useToast();
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
+  const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false);
 
   const handleShiftToggle = (shiftId: string) => {
     const updatedShifts = study.shifts.map(shift =>
@@ -37,6 +40,44 @@ export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTa
         description: `Turno ${toggledShift.name} ${!toggledShift.isActive ? 'ativado' : 'desativado'} com sucesso.`,
       });
     }
+  };
+
+  const handleEditShift = (shift: Shift) => {
+    setEditingShift(shift);
+    setIsShiftDialogOpen(true);
+  };
+
+  const handleDeleteShift = (shiftId: string) => {
+    const updatedShifts = study.shifts.filter(shift => shift.id !== shiftId);
+    onStudyUpdate({
+      ...study,
+      shifts: updatedShifts,
+    });
+    toast({
+      description: "Turno excluído com sucesso.",
+    });
+  };
+
+  const handleShiftSubmit = (shiftData: Shift) => {
+    let updatedShifts;
+    if (editingShift) {
+      updatedShifts = study.shifts.map(shift =>
+        shift.id === editingShift.id ? { ...shiftData, id: shift.id } : shift
+      );
+    } else {
+      updatedShifts = [...study.shifts, shiftData];
+    }
+
+    onStudyUpdate({
+      ...study,
+      shifts: updatedShifts,
+    });
+
+    setIsShiftDialogOpen(false);
+    setEditingShift(null);
+    toast({
+      description: `Turno ${editingShift ? 'atualizado' : 'criado'} com sucesso.`,
+    });
   };
 
   return (
@@ -98,7 +139,7 @@ export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTa
                   <p className="font-medium">{shift.name}</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      {shift.hours.toString().replace('.', ',') || shift.hours} horas
+                      {shift.hours.toString().replace('.', ',')} horas
                     </p>
                     {shift.taktTime && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
@@ -107,21 +148,48 @@ export function TimeStudyGeneralTab({ study, onStudyUpdate }: TimeStudyGeneralTa
                     )}
                   </div>
                 </div>
-                <Switch
-                  checked={shift.isActive}
-                  onCheckedChange={() => handleShiftToggle(shift.id)}
-                  aria-label={`Ativar ${shift.name}`}
-                />
+                <div className="flex items-center gap-4">
+                  <Switch
+                    checked={shift.isActive}
+                    onCheckedChange={() => handleShiftToggle(shift.id)}
+                    aria-label={`Ativar ${shift.name}`}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEditShift(shift)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteShift(shift.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
-            {study.shifts.length === 0 && (
-              <p className="text-center text-muted-foreground py-4">
-                Nenhum turno configurado
-              </p>
-            )}
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isShiftDialogOpen} onOpenChange={setIsShiftDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingShift ? 'Editar' : 'Adicionar'} Turno</DialogTitle>
+          </DialogHeader>
+          <ShiftForm
+            initialData={editingShift || undefined}
+            onSubmit={handleShiftSubmit}
+            onCancel={() => {
+              setIsShiftDialogOpen(false);
+              setEditingShift(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
