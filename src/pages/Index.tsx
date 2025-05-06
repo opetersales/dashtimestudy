@@ -7,16 +7,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Plus } from 'lucide-react';
 import { TimeStudy } from '@/utils/types';
 import { useToast } from '@/components/ui/use-toast';
-import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
+import { getUserData, saveUserData, loadFromLocalStorage } from '@/services/localStorage';
 import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
 
 const Index = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { toast } = useToast();
   
-  // Load time studies from localStorage
+  // Load time studies from localStorage (user-specific)
   const [studies, setStudies] = useState<TimeStudy[]>(() => {
-    return loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
+    return getUserData<TimeStudy[]>('timeStudies', []);
   });
 
   // Function to get current user name
@@ -27,7 +27,7 @@ const Index = () => {
 
   // Function to record history
   const updateHistory = (action: string, details: string, studyName: string) => {
-    const history = loadFromLocalStorage<any[]>('history', []);
+    const history = getUserData<any[]>('history', []);
     const newHistoryItem = {
       id: `hist-${Date.now()}`,
       date: new Date().toISOString(),
@@ -39,7 +39,7 @@ const Index = () => {
       entityName: studyName,
     };
     history.unshift(newHistoryItem);
-    saveToLocalStorage('history', history);
+    saveUserData('history', history);
   };
 
   const handleFormSubmit = (data: any) => {
@@ -70,7 +70,7 @@ const Index = () => {
     
     const updatedStudies = [...studies, newStudy];
     setStudies(updatedStudies);
-    saveToLocalStorage('timeStudies', updatedStudies);
+    saveUserData('timeStudies', updatedStudies);
     
     toast({
       title: "Estudo criado",

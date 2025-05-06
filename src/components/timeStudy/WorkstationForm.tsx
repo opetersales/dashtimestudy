@@ -4,52 +4,42 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Workstation } from '@/utils/types';
+import { Loader2 } from 'lucide-react';
 
-// Form schema validation
-const workstationFormSchema = z.object({
-  number: z.string().min(1, { message: 'Número do posto é obrigatório' }),
+const formSchema = z.object({
+  number: z.string().min(1, "O número do posto é obrigatório"),
   name: z.string().optional(),
   notes: z.string().optional(),
 });
 
-type WorkstationFormValues = z.infer<typeof workstationFormSchema>;
-
-interface WorkstationFormProps {
-  onSubmit: (data: Partial<Workstation>) => void;
+export interface WorkstationFormProps {
+  initialData?: Workstation;
+  onSubmit: (data: z.infer<typeof formSchema>) => void;
   onCancel: () => void;
-  initialData?: Partial<Workstation>;
+  isLoading?: boolean;
 }
 
-export function WorkstationForm({ onSubmit, onCancel, initialData }: WorkstationFormProps) {
-  const defaultValues: Partial<WorkstationFormValues> = {
-    number: initialData?.number || '',
-    name: initialData?.name || '',
-    notes: initialData?.notes || '',
-  };
-
-  const form = useForm<WorkstationFormValues>({
-    resolver: zodResolver(workstationFormSchema),
-    defaultValues,
+export const WorkstationForm = ({ initialData, onSubmit, onCancel, isLoading = false }: WorkstationFormProps) => {
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      number: initialData?.number || '',
+      name: initialData?.name || '',
+      notes: initialData?.notes || '',
+    },
   });
 
-  const handleFormSubmit = (data: WorkstationFormValues) => {
+  const handleSubmit = (data: z.infer<typeof formSchema>) => {
     onSubmit(data);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="number"
@@ -57,7 +47,7 @@ export function WorkstationForm({ onSubmit, onCancel, initialData }: Workstation
             <FormItem>
               <FormLabel>Número do Posto</FormLabel>
               <FormControl>
-                <Input placeholder="Ex: 01, 02, ..." {...field} />
+                <Input placeholder="Ex: 01, A, ou P01" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -69,9 +59,9 @@ export function WorkstationForm({ onSubmit, onCancel, initialData }: Workstation
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome (opcional)</FormLabel>
+              <FormLabel>Nome do Posto (opcional)</FormLabel>
               <FormControl>
-                <Input placeholder="Ex: Montagem da Base" {...field} />
+                <Input placeholder="Ex: Montagem de peça X" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -86,9 +76,8 @@ export function WorkstationForm({ onSubmit, onCancel, initialData }: Workstation
               <FormLabel>Observações (opcional)</FormLabel>
               <FormControl>
                 <Textarea 
-                  placeholder="Observações sobre este posto de trabalho" 
-                  className="resize-none" 
-                  rows={3}
+                  placeholder="Informações adicionais sobre o posto" 
+                  className="h-32" 
                   {...field} 
                 />
               </FormControl>
@@ -96,16 +85,29 @@ export function WorkstationForm({ onSubmit, onCancel, initialData }: Workstation
             </FormItem>
           )}
         />
-
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+        
+        <div className="flex justify-end space-x-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel} 
+            disabled={isLoading}
+          >
             Cancelar
           </Button>
-          <Button type="submit">
-            Salvar Posto
+          <Button 
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : initialData ? 'Atualizar' : 'Adicionar'}
           </Button>
         </div>
       </form>
     </Form>
   );
-}
+};

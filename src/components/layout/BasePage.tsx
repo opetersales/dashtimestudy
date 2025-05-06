@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { cn } from '@/lib/utils';
+import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
 
 interface BasePageProps {
   title: string;
@@ -14,13 +15,33 @@ interface BasePageProps {
 export const BasePage = ({ title, children, showBreadcrumbs = true }: BasePageProps) => {
   // Load sidebar state from localStorage
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    const storedState = localStorage.getItem('sidebarCollapsed');
-    return storedState ? JSON.parse(storedState) : false;
+    return loadFromLocalStorage('sidebarCollapsed', false);
+  });
+  
+  // Load theme preference from localStorage
+  const [isDarkTheme, setIsDarkTheme] = useState(() => {
+    return loadFromLocalStorage('darkTheme', false);
   });
   
   // Handle sidebar toggle
   const handleToggleSidebar = () => {
-    setSidebarCollapsed(prev => !prev);
+    const newState = !sidebarCollapsed;
+    setSidebarCollapsed(newState);
+    saveToLocalStorage('sidebarCollapsed', newState);
+  };
+  
+  // Handle theme toggle
+  const handleToggleTheme = () => {
+    const newTheme = !isDarkTheme;
+    setIsDarkTheme(newTheme);
+    saveToLocalStorage('darkTheme', newTheme);
+    
+    // Apply theme to document
+    if (newTheme) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
   
   // Update document title
@@ -39,7 +60,11 @@ export const BasePage = ({ title, children, showBreadcrumbs = true }: BasePagePr
           "md:ml-0" // On mobile, don't add margin
         )}
       >
-        <Header title={title} />
+        <Header 
+          sidebarCollapsed={sidebarCollapsed} 
+          onToggleTheme={handleToggleTheme} 
+          isDarkTheme={isDarkTheme} 
+        />
         
         <main className="container px-4 py-6 max-w-7xl mx-auto">
           {showBreadcrumbs && <Breadcrumbs className="mb-6" />}

@@ -20,7 +20,7 @@ export function Header({ sidebarCollapsed, onToggleTheme, isDarkTheme }: HeaderP
       </div>
       
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="icon" onClick={onToggleTheme}>
+        <Button variant="ghost" size="icon" onClick={onToggleTheme} title={isDarkTheme ? "Mudar para modo claro" : "Mudar para modo escuro"} className="tooltip-hover">
           {isDarkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
         <UserProfile />

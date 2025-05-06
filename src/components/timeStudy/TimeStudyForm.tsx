@@ -1,291 +1,306 @@
 
 import React, { useState } from 'react';
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
+import { TimeStudy } from '@/utils/types';
+import { ShiftToggleList } from './ShiftToggleList';
+import { ShiftForm } from './ShiftForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { loadFromLocalStorage } from '@/services/localStorage';
 
-const timeStudySchema = z.object({
-  client: z.string().min(1, "Cliente é obrigatório"),
-  modelName: z.string().min(1, "Modelo é obrigatório"),
-  studyDate: z.date({
-    required_error: "Data do estudo é obrigatória",
-  }),
-  responsiblePerson: z.string().min(1, "Responsável é obrigatório"),
-  monthlyDemand: z.coerce.number().min(1, "Demanda mensal é obrigatória"),
-  workingDays: z.coerce.number().min(1, "Dias úteis são obrigatórios"),
+// Validation schema
+const formSchema = z.object({
+  client: z.string().min(1, "O cliente é obrigatório"),
+  modelName: z.string().min(1, "O modelo é obrigatório"),
+  studyDate: z.date(),
+  responsiblePerson: z.string().min(1, "O responsável é obrigatório"),
+  monthlyDemand: z.coerce.number().min(0, "A demanda mensal deve ser maior ou igual a zero"),
+  workingDays: z.coerce.number().min(1, "Número de dias trabalhados deve ser maior que zero"),
 });
 
-type TimeStudyFormValues = z.infer<typeof timeStudySchema>;
-
 interface TimeStudyFormProps {
-  onSubmit: (data: TimeStudyFormValues, isDraft?: boolean) => void;
-  onCancel?: () => void;
-  isEdit?: boolean;
-  initialData?: Partial<TimeStudyFormValues> & { studyDate?: Date | string };
+  initialData?: TimeStudy;
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
+  isEdit: boolean;
 }
 
-export const TimeStudyForm = ({ onSubmit, onCancel, isEdit = false, initialData }: TimeStudyFormProps) => {
-  const [activeTab, setActiveTab] = useState('general');
+export const TimeStudyForm = ({ initialData, onSubmit, onCancel, isEdit }: TimeStudyFormProps) => {
+  const [shifts, setShifts] = useState<any[]>(initialData?.shifts || []);
+  const [isShiftFormOpen, setIsShiftFormOpen] = useState(false);
+  const [currentShift, setCurrentShift] = useState<any | null>(null);
 
-  // Process initialData to handle both Date and string types for studyDate
-  const processedInitialData = initialData ? {
-    ...initialData,
-    studyDate: initialData.studyDate 
-      ? typeof initialData.studyDate === 'string'
-        ? new Date(initialData.studyDate)
-        : initialData.studyDate
-      : new Date()
-  } : undefined;
-
-  const form = useForm<TimeStudyFormValues>({
-    resolver: zodResolver(timeStudySchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      client: processedInitialData?.client || "",
-      modelName: processedInitialData?.modelName || "",
-      studyDate: processedInitialData?.studyDate || new Date(),
-      responsiblePerson: processedInitialData?.responsiblePerson || "",
-      monthlyDemand: processedInitialData?.monthlyDemand || undefined,
-      workingDays: processedInitialData?.workingDays || 22,
-    }
+      client: initialData?.client || '',
+      modelName: initialData?.modelName || '',
+      studyDate: initialData?.studyDate ? new Date(initialData.studyDate) : new Date(),
+      responsiblePerson: initialData?.responsiblePerson || '', // No default value
+      monthlyDemand: initialData?.monthlyDemand || 0,
+      workingDays: initialData?.workingDays || 22,
+    },
   });
 
-  const handleSubmit = (data: TimeStudyFormValues) => {
-    onSubmit(data);
+  const handleSubmit = (data: z.infer<typeof formSchema>) => {
+    // Add the shifts to the data
+    const submitData = {
+      ...data,
+      shifts,
+    };
+    onSubmit(submitData);
   };
-  
-  const handleDraftSubmit = () => {
-    const formData = form.getValues();
-    if (Object.keys(form.formState.errors).length === 0) {
-      onSubmit(formData, true);
+
+  const handleAddShift = (shiftData: any) => {
+    if (currentShift) {
+      // Edit existing shift
+      setShifts(shifts.map(shift => 
+        shift.id === currentShift.id ? { ...shift, ...shiftData } : shift
+      ));
     } else {
-      form.trigger();
+      // Add new shift
+      const newShift = {
+        id: `shift-${Date.now()}`,
+        ...shiftData
+      };
+      setShifts([...shifts, newShift]);
+    }
+    setCurrentShift(null);
+    setIsShiftFormOpen(false);
+  };
+
+  const handleEditShift = (shift: any) => {
+    setCurrentShift(shift);
+    setIsShiftFormOpen(true);
+  };
+
+  const handleDeleteShift = (shiftId: string) => {
+    if (window.confirm("Tem certeza que deseja excluir este turno?")) {
+      setShifts(shifts.filter(s => s.id !== shiftId));
     }
   };
-  
-  const handlePublishSubmit = () => {
-    const formData = form.getValues();
-    if (Object.keys(form.formState.errors).length === 0) {
-      onSubmit(formData, false);
-    } else {
-      form.trigger();
-    }
+
+  // Helper to get current user name
+  const getCurrentUserName = () => {
+    const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
+    return userData.name;
+  };
+
+  // Helper to set "me" as responsible person
+  const setMeAsResponsible = () => {
+    form.setValue('responsiblePerson', getCurrentUserName());
   };
 
   return (
-    <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-1">
-          <TabsTrigger value="general">Informações Gerais</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="general" className="space-y-4 mt-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="client"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cliente</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Cliente" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="modelName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Modelo</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Modelo" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="studyDate"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Data do Estudo</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                                  ) : (
-                                    <span>Selecione uma data</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) =>
-                                  date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                                locale={ptBR}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="responsiblePerson"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Responsável</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Responsável pelo estudo" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="monthlyDemand"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Demanda Mensal</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Ex: 1000" 
-                              type="number"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="workingDays"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Dias Úteis</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Ex: 22" 
-                              type="number"
-                              min={1}
-                              max={31}
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Dias de trabalho no mês
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="client"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cliente</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome do cliente" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="modelName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Modelo</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome do modelo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="studyDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Data do Estudo</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "P", { locale: ptBR })
+                          ) : (
+                            <span>Selecione uma data</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="responsiblePerson"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Responsável</FormLabel>
+                  <div className="flex space-x-2">
+                    <FormControl className="flex-grow">
+                      <Input placeholder="Nome do responsável" {...field} />
+                    </FormControl>
+                    <Button 
+                      type="button" 
+                      variant="secondary" 
+                      onClick={setMeAsResponsible}
+                      className="whitespace-nowrap"
+                    >
+                      Eu
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-              
-              <div className="flex justify-end gap-2">
-                {onCancel && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={onCancel}
-                  >
-                    Cancelar
-                  </Button>
-                )}
-                
-                {/* Only show the "Create Study" button during initial creation,
-                    and show the "Save as Draft" and "Publish" buttons only during edit mode */}
-                {!isEdit ? (
-                  <Button type="submit">
-                    Criar Estudo
-                  </Button>
-                ) : (
-                  <>
-                    <Button 
-                      type="button" 
-                      variant="secondary"
-                      onClick={handleDraftSubmit}
-                    >
-                      Salvar como Rascunho
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="default"
-                      onClick={handlePublishSubmit}
-                    >
-                      Publicar Estudo
-                    </Button>
-                  </>
-                )}
-              </div>
-            </form>
-          </Form>
-        </TabsContent>
-      </Tabs>
-    </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="monthlyDemand"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Demanda Mensal</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="Quantidade" 
+                      {...field} 
+                      onChange={(e) => {
+                        field.onChange(e);
+                        const monthlyDemand = parseInt(e.target.value);
+                        const workingDays = form.getValues('workingDays');
+                        if (monthlyDemand && workingDays) {
+                          // Could calculate daily demand here if needed
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="workingDays"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dias Trabalhados por Mês</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="Dias" 
+                      {...field} 
+                      onChange={(e) => {
+                        field.onChange(e);
+                        const workingDays = parseInt(e.target.value);
+                        const monthlyDemand = form.getValues('monthlyDemand');
+                        if (monthlyDemand && workingDays) {
+                          // Could calculate daily demand here if needed
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium">Turnos de Trabalho</h3>
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => {
+                  setCurrentShift(null);
+                  setIsShiftFormOpen(true);
+                }}
+              >
+                Adicionar Turno
+              </Button>
+            </div>
+            <ShiftToggleList 
+              shifts={shifts} 
+              onEdit={handleEditShift}
+              onDelete={handleDeleteShift}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              {isEdit ? 'Atualizar' : 'Criar'} Estudo
+            </Button>
+          </div>
+        </form>
+      </Form>
+
+      <Dialog open={isShiftFormOpen} onOpenChange={setIsShiftFormOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{currentShift ? 'Editar' : 'Adicionar'} Turno</DialogTitle>
+          </DialogHeader>
+          <ShiftForm 
+            initialData={currentShift} 
+            onSubmit={handleAddShift} 
+            onCancel={() => {
+              setCurrentShift(null);
+              setIsShiftFormOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

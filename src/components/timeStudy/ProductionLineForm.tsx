@@ -4,50 +4,40 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ProductionLine } from '@/utils/types';
+import { Loader2 } from 'lucide-react';
 
-// Form schema validation
-const lineFormSchema = z.object({
-  name: z.string().min(1, { message: 'Nome da linha é obrigatório' }),
+const formSchema = z.object({
+  name: z.string().min(1, "O nome da linha é obrigatório"),
   notes: z.string().optional(),
 });
 
-type LineFormValues = z.infer<typeof lineFormSchema>;
-
-interface ProductionLineFormProps {
-  onSubmit: (data: Partial<ProductionLine>) => void;
+export interface ProductionLineFormProps {
+  initialData?: ProductionLine;
+  onSubmit: (data: z.infer<typeof formSchema>) => void;
   onCancel: () => void;
-  initialData?: Partial<ProductionLine>;
+  isLoading?: boolean;
 }
 
-export function ProductionLineForm({ onSubmit, onCancel, initialData }: ProductionLineFormProps) {
-  const defaultValues: Partial<LineFormValues> = {
-    name: initialData?.name || '',
-    notes: initialData?.notes || '',
-  };
-
-  const form = useForm<LineFormValues>({
-    resolver: zodResolver(lineFormSchema),
-    defaultValues,
+export const ProductionLineForm = ({ initialData, onSubmit, onCancel, isLoading = false }: ProductionLineFormProps) => {
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: initialData?.name || '',
+      notes: initialData?.notes || '',
+    },
   });
 
-  const handleFormSubmit = (data: LineFormValues) => {
+  const handleSubmit = (data: z.infer<typeof formSchema>) => {
     onSubmit(data);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -55,7 +45,7 @@ export function ProductionLineForm({ onSubmit, onCancel, initialData }: Producti
             <FormItem>
               <FormLabel>Nome da Linha</FormLabel>
               <FormControl>
-                <Input placeholder="Ex: Linha 01" {...field} />
+                <Input placeholder="Ex: Linha de Montagem 1" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -67,12 +57,11 @@ export function ProductionLineForm({ onSubmit, onCancel, initialData }: Producti
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Observações</FormLabel>
+              <FormLabel>Observações (opcional)</FormLabel>
               <FormControl>
                 <Textarea 
-                  placeholder="Observações gerais sobre a linha de produção" 
-                  className="resize-none" 
-                  rows={4}
+                  placeholder="Informações adicionais sobre a linha" 
+                  className="h-32" 
                   {...field} 
                 />
               </FormControl>
@@ -80,16 +69,29 @@ export function ProductionLineForm({ onSubmit, onCancel, initialData }: Producti
             </FormItem>
           )}
         />
-
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+        
+        <div className="flex justify-end space-x-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel} 
+            disabled={isLoading}
+          >
             Cancelar
           </Button>
-          <Button type="submit">
-            Salvar Linha
+          <Button 
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : initialData ? 'Atualizar' : 'Adicionar'}
           </Button>
         </div>
       </form>
     </Form>
   );
-}
+};
