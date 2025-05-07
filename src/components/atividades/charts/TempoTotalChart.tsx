@@ -50,7 +50,9 @@ export function TempoTotalChart({ detailedData, chartConfig }: TempoTotalChartPr
                   content={<ChartTooltipContent />}
                   formatter={(value, name) => {
                     // Format the value to show with two decimal places
-                    return [`${Number(value).toFixed(2)}s`, chartConfig[name]?.label || name];
+                    const displayValue = Number(value).toFixed(2);
+                    const activityName = chartConfig[name]?.label || name;
+                    return [`${displayValue}s`, activityName];
                   }}
                 />
                 <Legend content={<ChartLegendContent />} />

@@ -1,4 +1,3 @@
-
 import { Atividade } from '@/types/atividades';
 
 // Function to group activities by workstation
@@ -42,7 +41,7 @@ export const calculateUphMetrics = (postoMap: Map<string, any>, horasTrabalhadas
   return Array.from(postoMap.values());
 };
 
-// Function to generate detailed charts data
+// Function to generate detailed charts data for stacked bar chart
 export const generateDetailedChartsData = (atividades: Atividade[]) => {
   const postoMapDetailed = new Map<string, {
     posto: string;
@@ -85,8 +84,9 @@ export const generateDetailedChartsData = (atividades: Atividade[]) => {
       const result: Record<string, any> = { posto: postoData.posto };
       
       // Add each activity as a separate data point for stacking
-      postoData.atividades.forEach((atividade, index) => {
-        const safeKey = `a${index + 1}`;
+      postoData.atividades.forEach(atividade => {
+        // Use activity ID as key for uniqueness
+        const safeKey = `activity_${atividade.id}`;
         result[safeKey] = atividade.cycleTimeAjustado;
         result[`${safeKey}_name`] = atividade.descricao;
       });
@@ -103,14 +103,14 @@ export const createChartConfig = (detailedChartsData: Record<string, any>[]) => 
   // Collect all activity keys across all workstations
   detailedChartsData.forEach(item => {
     Object.keys(item).forEach(key => {
-      if (key.startsWith('a') && !key.includes('_name')) {
+      if (key.startsWith('activity_') && !key.includes('_name')) {
         uniqueActivities.add(key);
       }
     });
   });
   
   // Create configuration for each activity
-  Array.from(uniqueActivities).forEach(key => {
+  Array.from(uniqueActivities).forEach((key, index) => {
     // Find the first occurrence of this activity to get its name
     let activityName = '';
     for (const item of detailedChartsData) {
@@ -123,9 +123,9 @@ export const createChartConfig = (detailedChartsData: Record<string, any>[]) => 
     config[key] = {
       label: activityName,
       theme: {
-        // Generate distinctive colors based on the key index
-        light: `hsl(${parseInt(key.substring(1)) * 30 % 360} 70% 50%)`,
-        dark: `hsl(${parseInt(key.substring(1)) * 30 % 360} 70% 60%)`,
+        // Generate distinctive colors based on the index
+        light: `hsl(${index * 30 % 360} 70% 50%)`,
+        dark: `hsl(${index * 30 % 360} 70% 60%)`,
       },
     };
   });
