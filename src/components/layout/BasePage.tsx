@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { cn } from '@/lib/utils';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
+import { CustomWatermark } from './CustomWatermark';
 
 interface BasePageProps {
   title: string;
@@ -70,6 +71,8 @@ export const BasePage = ({ title, children, showBreadcrumbs = true }: BasePagePr
           {showBreadcrumbs && <Breadcrumbs className="mb-6" />}
           {children}
         </main>
+        
+        <CustomWatermark />
       </div>
     </div>
   );
