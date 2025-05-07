@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 interface TempoTotalChartProps {
@@ -26,16 +26,34 @@ export function TempoTotalChart({ detailedData, chartConfig }: TempoTotalChartPr
         <div className="h-[400px]">
           <ChartContainer config={chartConfig}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={detailedData}>
+              <BarChart 
+                data={detailedData}
+                margin={{ top: 10, right: 30, left: 20, bottom: 70 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="posto" />
-                <YAxis label={{ value: 'Segundos', angle: -90, position: 'insideLeft' }} />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent />
-                  }
+                <XAxis 
+                  dataKey="posto" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={70} 
+                  tick={{ fontSize: 12 }}
                 />
-                <ChartLegend content={<ChartLegendContent />} />
+                <YAxis 
+                  label={{ 
+                    value: 'Segundos', 
+                    angle: -90, 
+                    position: 'insideLeft',
+                    style: { textAnchor: 'middle' } 
+                  }}
+                />
+                <Tooltip 
+                  content={<ChartTooltipContent />}
+                  formatter={(value, name) => {
+                    // Format the value to show with two decimal places
+                    return [`${Number(value).toFixed(2)}s`, chartConfig[name]?.label || name];
+                  }}
+                />
+                <Legend content={<ChartLegendContent />} />
                 {Object.keys(chartConfig).map((key) => (
                   <Bar
                     key={key}

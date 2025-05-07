@@ -47,17 +47,20 @@ export const generateDetailedChartsData = (atividades: Atividade[]) => {
   const postoMapDetailed = new Map<string, {
     posto: string;
     atividades: {
+      id: string;
       descricao: string;
       cycleTime: number;
       cycleTimeAjustado: number;
     }[];
   }>();
 
+  // First, group activities by workstation
   atividades.forEach(atividade => {
     const existingPosto = postoMapDetailed.get(atividade.posto);
     
     if (existingPosto) {
       existingPosto.atividades.push({
+        id: atividade.id,
         descricao: atividade.descricao,
         cycleTime: atividade.cycleTime,
         cycleTimeAjustado: atividade.cycleTimeAjustado,
@@ -66,6 +69,7 @@ export const generateDetailedChartsData = (atividades: Atividade[]) => {
       postoMapDetailed.set(atividade.posto, {
         posto: atividade.posto,
         atividades: [{
+          id: atividade.id,
           descricao: atividade.descricao,
           cycleTime: atividade.cycleTime,
           cycleTimeAjustado: atividade.cycleTimeAjustado,
@@ -74,38 +78,56 @@ export const generateDetailedChartsData = (atividades: Atividade[]) => {
     }
   });
 
+  // Transform data for stacked bar chart
   return Array.from(postoMapDetailed.values())
     .map(postoData => {
-      // Create keys for each activity dynamically
-      const activityData: Record<string, any> = { posto: postoData.posto };
+      // Create a base object with the workstation name
+      const result: Record<string, any> = { posto: postoData.posto };
       
+      // Add each activity as a separate data point for stacking
       postoData.atividades.forEach((atividade, index) => {
         const safeKey = `a${index + 1}`;
-        activityData[safeKey] = atividade.cycleTimeAjustado;
-        activityData[`${safeKey}_name`] = atividade.descricao;
+        result[safeKey] = atividade.cycleTimeAjustado;
+        result[`${safeKey}_name`] = atividade.descricao;
       });
       
-      return activityData;
+      return result;
     });
 };
 
 // Function to create chart config with dynamic colors
 export const createChartConfig = (detailedChartsData: Record<string, any>[]) => {
   const config: Record<string, any> = {};
+  const uniqueActivities = new Set<string>();
   
+  // Collect all activity keys across all workstations
   detailedChartsData.forEach(item => {
     Object.keys(item).forEach(key => {
       if (key.startsWith('a') && !key.includes('_name')) {
-        config[key] = {
-          label: item[`${key}_name`],
-          // Each activity gets a different color
-          theme: {
-            light: `hsl(${parseInt(key.substring(1)) * 30 % 360} 70% 50%)`,
-            dark: `hsl(${parseInt(key.substring(1)) * 30 % 360} 70% 60%)`,
-          },
-        };
+        uniqueActivities.add(key);
       }
     });
+  });
+  
+  // Create configuration for each activity
+  Array.from(uniqueActivities).forEach(key => {
+    // Find the first occurrence of this activity to get its name
+    let activityName = '';
+    for (const item of detailedChartsData) {
+      if (`${key}_name` in item) {
+        activityName = item[`${key}_name`];
+        break;
+      }
+    }
+    
+    config[key] = {
+      label: activityName,
+      theme: {
+        // Generate distinctive colors based on the key index
+        light: `hsl(${parseInt(key.substring(1)) * 30 % 360} 70% 50%)`,
+        dark: `hsl(${parseInt(key.substring(1)) * 30 % 360} 70% 60%)`,
+      },
+    };
   });
   
   return config;

@@ -25,7 +25,7 @@ export function AtividadesCharts({ atividades, horasTrabalhadas }: AtividadesCha
     return calculateUphMetrics(postoMap, horasTrabalhadas);
   }, [atividades, horasTrabalhadas]);
 
-  // Detailed charts data with all activities per workstation
+  // Detailed charts data with all activities per workstation for stacked bar chart
   const detailedChartsData = useMemo(() => 
     generateDetailedChartsData(atividades), [atividades]);
 
