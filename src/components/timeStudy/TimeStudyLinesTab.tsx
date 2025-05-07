@@ -112,48 +112,47 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
     }));
   };
 
-  const handleAddActivity = (workstationId: string, activityData: Partial<Activity>) => {
+  const handleAddActivity = (workstationId: string, activityData: Activity) => {
     setIsLoading(true);
     try {
-      const newActivity: Activity = {
-        id: `act-${Date.now()}`,
-        description: activityData.description || '',
-        type: activityData.type || 'Manual',
-        collections: activityData.collections || [],
-        pfdFactor: activityData.pfdFactor !== undefined ? activityData.pfdFactor : 0.15, // 15% default
-      };
-
-      const updatedLines = study.productionLines.map(line => {
-        return {
-          ...line,
-          workstations: line.workstations.map(ws => {
-            if (ws.id === workstationId) {
-              return {
-                ...ws,
-                activities: [...ws.activities, newActivity],
-              };
-            }
-            return ws;
-          })
-        };
+      // Find which line contains the workstation
+      let lineIndex = -1;
+      let wsIndex = -1;
+      
+      study.productionLines.forEach((line, lIndex) => {
+        const wIndex = line.workstations.findIndex(ws => ws.id === workstationId);
+        if (wIndex >= 0) {
+          lineIndex = lIndex;
+          wsIndex = wIndex;
+        }
       });
+      
+      if (lineIndex >= 0 && wsIndex >= 0) {
+        // Create a deep copy of the study
+        const updatedStudy = JSON.parse(JSON.stringify(study));
+        
+        // Add the activity to the workstation
+        updatedStudy.productionLines[lineIndex].workstations[wsIndex].activities.push(activityData);
+        updatedStudy.updatedAt = new Date().toISOString();
+        
+        onStudyUpdate(updatedStudy);
+        updateHistory('update', `Adicionada atividade "${activityData.description}" ao posto de trabalho ${currentWorkstation?.number}`);
 
-      const updatedStudy = {
-        ...study,
-        productionLines: updatedLines,
-        updatedAt: new Date().toISOString()
-      };
-
-      onStudyUpdate(updatedStudy);
-      updateHistory('update', `Adicionada atividade "${newActivity.description}" ao posto de trabalho ${currentWorkstation?.number}`);
-
-      toast({
-        title: "Atividade adicionada",
-        description: "A atividade foi adicionada com sucesso."
-      });
+        toast({
+          title: "Atividade adicionada",
+          description: "A atividade foi adicionada com sucesso."
+        });
+      }
 
       setCurrentWorkstation(null);
       setIsAddingActivity(false);
+    } catch (error) {
+      console.error("Error adding activity:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao adicionar a atividade.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -221,6 +220,12 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
     }
   };
 
+  // Add this function to open the activity form for a specific workstation
+  const openAddActivityForm = (workstation: Workstation) => {
+    setCurrentWorkstation(workstation);
+    setIsAddingActivity(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Botão de adicionar linha */}
@@ -263,6 +268,7 @@ export function TimeStudyLinesTab({ study, onStudyUpdate, updateHistory }: TimeS
                 setCurrentLine(line);
                 setIsAddingWorkstation(true);
               }}
+              onAddActivity={openAddActivityForm}
               study={study}
               onStudyUpdate={onStudyUpdate}
               updateHistory={updateHistory}

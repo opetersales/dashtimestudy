@@ -23,11 +23,11 @@ import * as XLSX from 'xlsx';
 interface HistoryItem {
   id: string;
   name: string;
-  version: string;
   date: string;
   user: string;
   action: 'update' | 'create' | 'archive';
   details: string;
+  entityName?: string;
 }
 
 const History = () => {
@@ -42,16 +42,20 @@ const History = () => {
     if (savedHistory.length === 0) {
       // Generate mock data
       const mockHistory: HistoryItem[] = [
-        { id: '1', name: 'GBO Linha 01', version: '1.2', date: '2025-04-19', user: 'Carlos Silva', action: 'update', details: 'Atualização de tempos de ciclo' },
-        { id: '2', name: 'GBO Linha 02', version: '1.0', date: '2025-04-18', user: 'Maria Oliveira', action: 'create', details: 'Criação inicial do GBO' },
-        { id: '3', name: 'GBO Linha 01', version: '1.1', date: '2025-04-17', user: 'João Santos', action: 'update', details: 'Adição de posto de trabalho' },
-        { id: '4', name: 'GBO Linha 03', version: '1.3', date: '2025-04-16', user: 'Ana Costa', action: 'archive', details: 'Arquivamento da versão anterior' },
-        { id: '5', name: 'GBO Linha 01', version: '1.0', date: '2025-04-15', user: 'Carlos Silva', action: 'create', details: 'Criação inicial do GBO' },
-        { id: '6', name: 'GBO Linha 04', version: '1.1', date: '2025-04-14', user: 'Pedro Almeida', action: 'update', details: 'Redistribuição de atividades' },
+        { id: '1', name: 'GBO Linha 01', entityName: 'GBO Linha 01', date: '2025-04-19', user: 'Carlos Silva', action: 'update', details: 'Atualização de tempos de ciclo' },
+        { id: '2', name: 'GBO Linha 02', entityName: 'GBO Linha 02', date: '2025-04-18', user: 'Maria Oliveira', action: 'create', details: 'Criação inicial do GBO' },
+        { id: '3', name: 'GBO Linha 01', entityName: 'GBO Linha 01', date: '2025-04-17', user: 'João Santos', action: 'update', details: 'Adição de posto de trabalho' },
+        { id: '4', name: 'GBO Linha 03', entityName: 'GBO Linha 03', date: '2025-04-16', user: 'Ana Costa', action: 'archive', details: 'Arquivamento da versão anterior' },
+        { id: '5', name: 'GBO Linha 01', entityName: 'GBO Linha 01', date: '2025-04-15', user: 'Carlos Silva', action: 'create', details: 'Criação inicial do GBO' },
+        { id: '6', name: 'GBO Linha 04', entityName: 'GBO Linha 04', date: '2025-04-14', user: 'Pedro Almeida', action: 'update', details: 'Redistribuição de atividades' },
       ];
       return mockHistory;
     }
-    return savedHistory;
+    return savedHistory.map(item => ({
+      ...item,
+      // Ensure entityName is populated for existing items
+      entityName: item.entityName || item.name
+    }));
   });
 
   // Filter history items
@@ -68,8 +72,7 @@ const History = () => {
 
   const handleExportExcel = () => {
     const data = historyItems.map(item => ({
-      GBO: item.name,
-      Versão: item.version,
+      GBO: item.entityName || item.name,
       Data: format(new Date(item.date), 'dd/MM/yyyy'),
       Usuário: item.user,
       Ação: item.action === 'create' ? 'Criação' :
@@ -80,8 +83,7 @@ const History = () => {
     const ws = XLSX.utils.json_to_sheet(data);
     
     const wscols = [
-      { wch: 15 }, // GBO
-      { wch: 10 }, // Versão
+      { wch: 20 }, // GBO
       { wch: 12 }, // Data
       { wch: 15 }, // Usuário
       { wch: 15 }, // Ação
@@ -176,7 +178,6 @@ const History = () => {
                     <thead>
                       <tr className="border-b">
                         <th className="px-2 py-3 text-left">GBO</th>
-                        <th className="px-2 py-3 text-left">Versão</th>
                         <th className="px-2 py-3 text-left">Data</th>
                         <th className="px-2 py-3 text-left">Usuário</th>
                         <th className="px-2 py-3 text-left">Ação</th>
@@ -187,8 +188,7 @@ const History = () => {
                     <tbody>
                       {filteredItems.map(item => (
                         <tr key={item.id} className="border-b hover:bg-muted/50">
-                          <td className="px-2 py-3">{item.name}</td>
-                          <td className="px-2 py-3">{item.version}</td>
+                          <td className="px-2 py-3">{item.entityName || item.name}</td>
                           <td className="px-2 py-3">{format(new Date(item.date), 'dd/MM/yyyy', { locale: ptBR })}</td>
                           <td className="px-2 py-3">{item.user}</td>
                           <td className="px-2 py-3">
@@ -230,7 +230,7 @@ const History = () => {
                 .map(item => (
                   <div key={item.id} className="flex flex-col gap-1 border-b py-3 last:border-0">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">{item.name} v{item.version}</h3>
+                      <h3 className="font-medium">{item.entityName || item.name}</h3>
                       <Badge variant="secondary">Atualização</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -256,7 +256,7 @@ const History = () => {
                 .map(item => (
                   <div key={item.id} className="flex flex-col gap-1 border-b py-3 last:border-0">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">{item.name} v{item.version}</h3>
+                      <h3 className="font-medium">{item.entityName || item.name}</h3>
                       <Badge>Criação</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -282,7 +282,7 @@ const History = () => {
                 .map(item => (
                   <div key={item.id} className="flex flex-col gap-1 border-b py-3 last:border-0">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">{item.name} v{item.version}</h3>
+                      <h3 className="font-medium">{item.entityName || item.name}</h3>
                       <Badge variant="outline">Arquivamento</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -310,7 +310,7 @@ const History = () => {
           {selectedItem && (
             <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-medium">{selectedItem.name} (v{selectedItem.version})</h3>
+                <h3 className="text-lg font-medium">{selectedItem.entityName || selectedItem.name}</h3>
                 <p className="text-sm text-muted-foreground">
                   {format(new Date(selectedItem.date), 'dd/MM/yyyy', { locale: ptBR })}
                 </p>

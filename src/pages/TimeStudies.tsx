@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, FileText } from 'lucide-react';
 import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
 import { TimeStudy } from '@/utils/types';
@@ -18,16 +18,15 @@ const TimeStudies: React.FC = () => {
   const [studyToDelete, setStudyToDelete] = useState<TimeStudy | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Load studies specific to the current user
-    const currentUser = getCurrentUser();
-    const userId = currentUser?.id || 'anonymous';
-    const loadedStudies = loadFromLocalStorage<TimeStudy[]>(`timeStudies_${userId}`, []);
+    // Load studies from localStorage
+    const loadedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
     setStudies(loadedStudies);
 
     const handleDashboardUpdate = () => {
-      const refreshedStudies = loadFromLocalStorage<TimeStudy[]>(`timeStudies_${userId}`, []);
+      const refreshedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
       setStudies(refreshedStudies);
     };
 
@@ -57,6 +56,10 @@ const TimeStudies: React.FC = () => {
     };
     history.unshift(newHistoryItem);
     saveToLocalStorage('history', history);
+  };
+  
+  const handleOpenStudy = (id: string) => {
+    navigate(`/study/${id}`);
   };
 
   const handleDeleteStudy = (e: React.MouseEvent, study: TimeStudy) => {
@@ -118,9 +121,7 @@ const TimeStudies: React.FC = () => {
   };
 
   const handleFormSubmit = (data: any) => {
-    const currentUser = getCurrentUser();
-    const userId = currentUser?.id || 'anonymous';
-    
+    // Processar a data para garantir que seja string
     const studyDate = data.studyDate instanceof Date
       ? data.studyDate.toISOString()
       : new Date(data.studyDate).toISOString();
@@ -145,8 +146,8 @@ const TimeStudies: React.FC = () => {
         s.id === updatedStudy.id ? updatedStudy : s
       );
       
-      // Save studies with user ID in the key
-      saveToLocalStorage(`timeStudies_${userId}`, updatedStudies);
+      setStudies(updatedStudies);
+      saveToLocalStorage('timeStudies', updatedStudies);
       
       toast({
         title: "Estudo atualizado",
@@ -181,7 +182,7 @@ const TimeStudies: React.FC = () => {
       
       const updatedStudies = [...studies, newStudy];
       setStudies(updatedStudies);
-      saveToLocalStorage(`timeStudies_${userId}`, updatedStudies);
+      saveToLocalStorage('timeStudies', updatedStudies);
       
       toast({
         title: "Estudo criado",
@@ -212,64 +213,66 @@ const TimeStudies: React.FC = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {studies.map(study => (
-          <Card key={study.id} className="relative hover:shadow-lg transition-shadow">
-            <Link to={`/study/${study.id}`} className="block">
-              <CardHeader>
-                <CardTitle className="flex justify-between">
-                  <span>{study.client}</span>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSelectedStudy(study);
-                        setIsFormOpen(true);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={(e) => handleDeleteStudy(e, study)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={(e) => handleExportStudy(e, study)}
-                    >
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div>
-                    <span className="font-medium">Modelo:</span> {study.modelName}
-                  </div>
-                  <div>
-                    <span className="font-medium">Data:</span> {new Date(study.studyDate).toLocaleDateString()}
-                  </div>
-                  <div>
-                    <span className="font-medium">Responsável:</span> {study.responsiblePerson}
-                  </div>
-                  <div>
-                    <span className="font-medium">Demanda Mensal:</span> {study.monthlyDemand.toLocaleString()} unidades
-                  </div>
-                  <div>
-                    <span className="font-medium">Linhas de Produção:</span> {study.productionLines?.length || 0}
-                  </div>
-                  <div>
-                    <span className="font-medium">Turnos:</span> {study.shifts?.length || 0}
-                  </div>
+          <Card 
+            key={study.id} 
+            className="relative hover:shadow-lg transition-shadow cursor-pointer" 
+            onClick={() => handleOpenStudy(study.id)}
+          >
+            <CardHeader>
+              <CardTitle className="flex justify-between">
+                <span>{study.client}</span>
+                <div className="flex space-x-2" onClick={e => e.stopPropagation()}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedStudy(study);
+                      setIsFormOpen(true);
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={(e) => handleDeleteStudy(e, study)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={(e) => handleExportStudy(e, study)}
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
                 </div>
-              </CardContent>
-            </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div>
+                  <span className="font-medium">Modelo:</span> {study.modelName}
+                </div>
+                <div>
+                  <span className="font-medium">Data:</span> {new Date(study.studyDate).toLocaleDateString()}
+                </div>
+                <div>
+                  <span className="font-medium">Responsável:</span> {study.responsiblePerson}
+                </div>
+                <div>
+                  <span className="font-medium">Demanda Mensal:</span> {study.monthlyDemand.toLocaleString()} unidades
+                </div>
+                <div>
+                  <span className="font-medium">Linhas de Produção:</span> {study.productionLines?.length || 0}
+                </div>
+                <div>
+                  <span className="font-medium">Turnos:</span> {study.shifts?.length || 0}
+                </div>
+              </div>
+            </CardContent>
           </Card>
         ))}
         
@@ -285,7 +288,7 @@ const TimeStudies: React.FC = () => {
       </div>
       
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>{selectedStudy ? 'Editar Estudo' : 'Novo Estudo'}</DialogTitle>
           </DialogHeader>
