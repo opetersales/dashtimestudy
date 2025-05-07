@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -299,7 +300,7 @@ const TimeStudies: React.FC = () => {
               id: selectedStudy.id,
               client: selectedStudy.client,
               modelName: selectedStudy.modelName,
-              studyDate: new Date(selectedStudy.studyDate),
+              studyDate: selectedStudy.studyDate, // Already a string in selectedStudy
               responsiblePerson: selectedStudy.responsiblePerson,
               monthlyDemand: selectedStudy.monthlyDemand,
               workingDays: selectedStudy.workingDays,

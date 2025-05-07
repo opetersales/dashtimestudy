@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,13 +39,16 @@ export const TimeStudyForm = ({ initialData, onSubmit, onCancel, isEdit }: TimeS
   const [isShiftFormOpen, setIsShiftFormOpen] = useState(false);
   const [currentShift, setCurrentShift] = useState<any | null>(null);
 
+  // Convert string date to Date object for the form
+  const initialDate = initialData?.studyDate ? new Date(initialData.studyDate) : new Date();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       client: initialData?.client || '',
       modelName: initialData?.modelName || '',
-      studyDate: initialData?.studyDate ? new Date(initialData.studyDate) : new Date(),
-      responsiblePerson: initialData?.responsiblePerson || '', // No default value
+      studyDate: initialDate,
+      responsiblePerson: initialData?.responsiblePerson || '', 
       monthlyDemand: initialData?.monthlyDemand || 0,
       workingDays: initialData?.workingDays || 22,
     },
