@@ -1,92 +1,51 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { Home } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
-interface RouteMapping {
-  [key: string]: {
-    label: string;
-    parent?: string;
-  };
+interface BreadcrumbsProps {
+  className?: string;
 }
 
-const routes: RouteMapping = {
-  '/': { label: 'Dashboard' },
-  '/gbos': { label: 'GBOs', parent: '/' },
-  '/operators': { label: 'Operadores', parent: '/' },
-  '/planning': { label: 'Planejamento', parent: '/' },
-  '/history': { label: 'Histórico', parent: '/' },
-  '/documents': { label: 'Documentos', parent: '/' },
-  '/settings': { label: 'Configurações', parent: '/' },
-  '/analise-atividades': { label: 'Análise de Atividades', parent: '/gbos' },
-};
-
-export function Breadcrumbs() {
+export function Breadcrumbs({ className }: BreadcrumbsProps) {
   const location = useLocation();
-  const paths = location.pathname.split('/').filter(Boolean);
-  
-  // Function to build breadcrumb items with proper links
-  const buildBreadcrumbs = () => {
-    const breadcrumbs = [];
-    let currentPath = '';
-
-    // Add home
-    breadcrumbs.push({
-      path: '/',
-      label: <Home size={16} />,
-      isCurrentPage: location.pathname === '/',
-    });
-
-    // Add each path segment
-    for (let i = 0; i < paths.length; i++) {
-      currentPath += `/${paths[i]}`;
-      const routeInfo = routes[currentPath];
-      
-      if (routeInfo) {
-        breadcrumbs.push({
-          path: currentPath,
-          label: routeInfo.label,
-          isCurrentPage: currentPath === location.pathname,
-        });
-      } else {
-        // Handle dynamic routes (like '/gbos/:id')
-        // For simplicity, we'll just show the URL segment
-        breadcrumbs.push({
-          path: currentPath,
-          label: paths[i].charAt(0).toUpperCase() + paths[i].slice(1),
-          isCurrentPage: currentPath === location.pathname,
-        });
-      }
-    }
-
-    return breadcrumbs;
-  };
-
-  const breadcrumbs = buildBreadcrumbs();
-
-  if (breadcrumbs.length <= 1) {
-    return null; // Don't show breadcrumbs on home page
-  }
+  const pathSegments = location.pathname.split('/').filter(Boolean);
 
   return (
-    <Breadcrumb className="mb-4 px-6 py-2">
-      <BreadcrumbList>
-        {breadcrumbs.map((breadcrumb, index) => (
-          <React.Fragment key={breadcrumb.path}>
-            <BreadcrumbItem>
-              {breadcrumb.isCurrentPage ? (
-                <BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink asChild>
-                  <Link to={breadcrumb.path}>{breadcrumb.label}</Link>
-                </BreadcrumbLink>
-              )}
-            </BreadcrumbItem>
-            {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-          </React.Fragment>
-        ))}
-      </BreadcrumbList>
-    </Breadcrumb>
+    <nav className={cn("flex", className)}>
+      <ol className="flex text-sm items-center space-x-2">
+        <li>
+          <a href="/" className="text-muted-foreground hover:text-foreground">Home</a>
+        </li>
+        
+        {pathSegments.map((segment, index) => {
+          // Format the segment to be more readable
+          const readableSegment = segment
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, char => char.toUpperCase());
+          
+          // The path up to this segment
+          const path = `/${pathSegments.slice(0, index + 1).join('/')}`;
+          
+          // Check if this is the last segment
+          const isLast = index === pathSegments.length - 1;
+          
+          return (
+            <React.Fragment key={path}>
+              <li className="text-muted-foreground">/</li>
+              <li>
+                {isLast ? (
+                  <span className="font-medium">{readableSegment}</span>
+                ) : (
+                  <a href={path} className="text-muted-foreground hover:text-foreground">
+                    {readableSegment}
+                  </a>
+                )}
+              </li>
+            </React.Fragment>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Edit, Trash2, FileText } from 'lucide-react';
 import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
 import { TimeStudy } from '@/utils/types';
-import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
+import { loadFromLocalStorage, saveToLocalStorage, getCurrentUser } from '@/services/localStorage';
 
 const TimeStudies: React.FC = () => {
   const [studies, setStudies] = useState<TimeStudy[]>([]);
@@ -19,11 +19,14 @@ const TimeStudies: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const loadedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
+    // Load studies specific to the current user
+    const currentUser = getCurrentUser();
+    const userId = currentUser?.id || 'anonymous';
+    const loadedStudies = loadFromLocalStorage<TimeStudy[]>(`timeStudies_${userId}`, []);
     setStudies(loadedStudies);
 
     const handleDashboardUpdate = () => {
-      const refreshedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
+      const refreshedStudies = loadFromLocalStorage<TimeStudy[]>(`timeStudies_${userId}`, []);
       setStudies(refreshedStudies);
     };
 
@@ -114,6 +117,9 @@ const TimeStudies: React.FC = () => {
   };
 
   const handleFormSubmit = (data: any) => {
+    const currentUser = getCurrentUser();
+    const userId = currentUser?.id || 'anonymous';
+    
     const studyDate = data.studyDate instanceof Date
       ? data.studyDate.toISOString()
       : new Date(data.studyDate).toISOString();
@@ -138,8 +144,8 @@ const TimeStudies: React.FC = () => {
         s.id === updatedStudy.id ? updatedStudy : s
       );
       
-      setStudies(updatedStudies);
-      saveToLocalStorage('timeStudies', updatedStudies);
+      // Save studies with user ID in the key
+      saveToLocalStorage(`timeStudies_${userId}`, updatedStudies);
       
       toast({
         title: "Estudo atualizado",
@@ -174,7 +180,7 @@ const TimeStudies: React.FC = () => {
       
       const updatedStudies = [...studies, newStudy];
       setStudies(updatedStudies);
-      saveToLocalStorage('timeStudies', updatedStudies);
+      saveToLocalStorage(`timeStudies_${userId}`, updatedStudies);
       
       toast({
         title: "Estudo criado",
@@ -290,12 +296,20 @@ const TimeStudies: React.FC = () => {
             }}
             isEdit={!!selectedStudy}
             initialData={selectedStudy ? {
+              id: selectedStudy.id,
               client: selectedStudy.client,
               modelName: selectedStudy.modelName,
               studyDate: new Date(selectedStudy.studyDate),
               responsiblePerson: selectedStudy.responsiblePerson,
               monthlyDemand: selectedStudy.monthlyDemand,
-              workingDays: selectedStudy.workingDays
+              workingDays: selectedStudy.workingDays,
+              shifts: selectedStudy.shifts || [],
+              productionLines: selectedStudy.productionLines || [],
+              createdAt: selectedStudy.createdAt,
+              updatedAt: selectedStudy.updatedAt,
+              createdBy: selectedStudy.createdBy,
+              version: selectedStudy.version,
+              status: selectedStudy.status
             } : undefined}
           />
         </DialogContent>
