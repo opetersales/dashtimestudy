@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TimeStudy } from '@/utils/types';
+import { TimeStudy, Shift } from '@/utils/types';
 import { ShiftToggleList } from './ShiftToggleList';
 import { ShiftForm } from './ShiftForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -29,7 +29,7 @@ const formSchema = z.object({
 });
 
 interface TimeStudyFormProps {
-  initialData?: TimeStudy;
+  initialData?: Partial<TimeStudy>;
   onSubmit: (data: any) => void;
   onCancel: () => void;
   isEdit: boolean;
