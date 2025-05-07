@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +18,7 @@ import {
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog';
-import { Search, Download, Upload, FileText, Filter } from 'lucide-react';
+import { Search, Download, Upload, FileText, Filter, Trash } from 'lucide-react';
 import { loadFromLocalStorage, saveToLocalStorage } from '@/services/localStorage';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -46,6 +45,8 @@ const Documents = () => {
   const [importType, setImportType] = useState<'gbo' | 'report' | 'manual' | 'other'>('report');
   const [importDescription, setImportDescription] = useState('');
   const [fileData, setFileData] = useState<File | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
 
   // Função para obter o nome do usuário atual
   const getUserName = () => {
@@ -234,6 +235,38 @@ const Documents = () => {
     updateHistory('Importação de documento', `O documento ${importTitle} foi importado`);
   };
   
+  // Função para deletar documento
+  const handleDeleteDocument = (e: React.MouseEvent, doc: Document) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDocumentToDelete(doc);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteDocument = () => {
+    if (!documentToDelete) return;
+    
+    const updatedDocuments = documents.filter(doc => doc.id !== documentToDelete.id);
+    setDocuments(updatedDocuments);
+    saveToLocalStorage('documents', updatedDocuments);
+    
+    toast({
+      title: "Documento excluído",
+      description: `O documento ${documentToDelete.title} foi excluído com sucesso.`,
+    });
+    
+    // Registrar no histórico
+    updateHistory('Exclusão de documento', `O documento ${documentToDelete.title} foi excluído`);
+    
+    setIsDeleteDialogOpen(false);
+    setDocumentToDelete(null);
+    
+    // Caso o documento excluído esteja selecionado, remova-o da seleção
+    if (selectedDocuments.includes(documentToDelete.id)) {
+      setSelectedDocuments(selectedDocuments.filter(id => id !== documentToDelete.id));
+    }
+  };
+  
   // Função para registrar histórico
   const updateHistory = (action: string, details: string) => {
     const history = loadFromLocalStorage<any[]>('history', []);
@@ -326,6 +359,7 @@ const Documents = () => {
                 <th className="text-left font-medium py-2 hidden md:table-cell">Data</th>
                 <th className="text-left font-medium py-2 hidden md:table-cell">Autor</th>
                 <th className="text-left font-medium py-2 hidden lg:table-cell">Tamanho</th>
+                <th className="text-right font-medium py-2">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -360,11 +394,20 @@ const Documents = () => {
                     </td>
                     <td className="py-3 hidden md:table-cell">{doc.createdBy}</td>
                     <td className="py-3 hidden lg:table-cell">{doc.size}</td>
+                    <td className="py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleDeleteDocument(e, doc)}
+                      >
+                        <Trash className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="py-8 text-center text-muted-foreground">
                     Nenhum documento encontrado
                   </td>
                 </tr>
@@ -461,6 +504,31 @@ const Documents = () => {
             </Button>
             <Button onClick={handleImportDocument}>
               Importar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Diálogo para confirmar exclusão de documento */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+            <DialogDescription>
+              Esta ação não pode ser desfeita. Este documento será excluído permanentemente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p>
+              Tem certeza que deseja excluir o documento &quot;{documentToDelete?.title}&quot;?
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteDocument}>
+              Excluir Documento
             </Button>
           </DialogFooter>
         </DialogContent>
