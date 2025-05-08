@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface BreadcrumbsProps {
@@ -15,7 +15,7 @@ export function Breadcrumbs({ className }: BreadcrumbsProps) {
     <nav className={cn("flex", className)}>
       <ol className="flex text-sm items-center space-x-2">
         <li>
-          <a href="/" className="text-muted-foreground hover:text-foreground">Home</a>
+          <Link to="/" className="text-muted-foreground hover:text-foreground">Home</Link>
         </li>
         
         {pathSegments.map((segment, index) => {
@@ -37,9 +37,9 @@ export function Breadcrumbs({ className }: BreadcrumbsProps) {
                 {isLast ? (
                   <span className="font-medium">{readableSegment}</span>
                 ) : (
-                  <a href={path} className="text-muted-foreground hover:text-foreground">
+                  <Link to={path} className="text-muted-foreground hover:text-foreground">
                     {readableSegment}
-                  </a>
+                  </Link>
                 )}
               </li>
             </React.Fragment>

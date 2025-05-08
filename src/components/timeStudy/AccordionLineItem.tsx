@@ -147,10 +147,40 @@ export function AccordionLineItem({
           ...l,
           workstations: l.workstations.map(ws => {
             if (ws.id === selectedWorkstation.id) {
+              // Calcular tempos médios e de ciclo para a nova atividade
+              let collections = activityData.collections;
+              
+              if (Array.isArray(collections) && collections.length > 0) {
+                // Ensure collections are in the correct format
+                if (typeof collections[0] !== 'object') {
+                  collections = collections.map(value => ({
+                    id: `collection-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    value: value
+                  }));
+                }
+              }
+              
+              // Calculate averageNormalTime
+              let averageNormalTime = 0;
+              if (collections && collections.length > 0) {
+                const totalTime = collections.reduce((sum, collection) => {
+                  const value = typeof collection === 'object' ? collection.value : collection;
+                  return sum + value;
+                }, 0);
+                averageNormalTime = totalTime / collections.length;
+              }
+              
+              // Calculate cycleTime with PF&D factor
+              const cycleTime = averageNormalTime * (1 + (activityData.pfdFactor || 0));
+              
               const newActivity = {
                 id: `activity-${Date.now()}`,
                 ...activityData,
+                collections,
+                averageNormalTime,
+                cycleTime
               };
+              
               return {
                 ...ws,
                 activities: [...ws.activities, newActivity],
