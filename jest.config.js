@@ -11,7 +11,9 @@ module.exports = {
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      tsconfig: './tsconfig.json',
+    }],
   },
   testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
@@ -22,5 +24,12 @@ module.exports = {
     '!src/vite-env.d.ts',
   ],
   watchPathIgnorePatterns: ['node_modules'],
-  resetMocks: true,
+  resetMocks: false,
+  restoreMocks: true,
+  clearMocks: true,
+  globals: {
+    'ts-jest': {
+      tsconfig: './tsconfig.json',
+    },
+  },
 };

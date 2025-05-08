@@ -6,21 +6,21 @@ import '@testing-library/jest-dom';
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
-    getItem: jest.fn((key: string) => {
+    getItem: (key: string) => {
       return store[key] || null;
-    }),
-    setItem: jest.fn((key: string, value: string) => {
+    },
+    setItem: (key: string, value: string) => {
       store[key] = value.toString();
-    }),
-    removeItem: jest.fn((key: string) => {
+    },
+    removeItem: (key: string) => {
       delete store[key];
-    }),
-    clear: jest.fn(() => {
+    },
+    clear: () => {
       store = {};
-    }),
-    key: jest.fn((index: number) => {
+    },
+    key: (index: number) => {
       return Object.keys(store)[index] || null;
-    }),
+    },
     length: 0,
   };
 })();
@@ -43,9 +43,17 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Silenciar avisos de console durante os testes
+const originalConsole = { ...console };
+
+// Configurar mocks para console
 global.console = {
   ...console,
   error: jest.fn(),
   warn: jest.fn(),
   log: jest.fn(),
 };
+
+// Adaptar getItem e setItem do localStorage para testes
+jest.spyOn(localStorageMock, 'getItem');
+jest.spyOn(localStorageMock, 'setItem');
+jest.spyOn(localStorageMock, 'removeItem');

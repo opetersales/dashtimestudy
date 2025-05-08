@@ -1,6 +1,7 @@
 
 import { useTimeStudyCalculations } from './useTimeStudyCalculations';
 import { Workstation, Activity } from '@/utils/types';
+import '@testing-library/jest-dom';
 
 describe('useTimeStudyCalculations', () => {
   const { 
