@@ -105,7 +105,7 @@ export function WorkstationList({
     
     const totalTime = activity.collections.reduce((sum, collection) => {
       const value = typeof collection === 'object' ? collection.value : collection;
-      return sum + value;
+      return sum + Number(value);
     }, 0);
     
     return totalTime / activity.collections.length;
@@ -223,13 +223,13 @@ export function WorkstationList({
                                     className="tooltip-hover rounded-full px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900/70 dark:text-green-300"
                                     title="Tempo médio normal (sem PF&D)"
                                   >
-                                    T.M.: {activity.averageNormalTime.toFixed(2)}s
+                                    T.M.: {Number(activity.averageNormalTime).toFixed(2)}s
                                   </span>
                                   <span 
                                     className="tooltip-hover rounded-full px-2 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900/70 dark:text-purple-300"
                                     title="Tempo de ciclo (com PF&D aplicado)"
                                   >
-                                    T.C.: {activity.cycleTime.toFixed(2)}s
+                                    T.C.: {Number(activity.cycleTime).toFixed(2)}s
                                   </span>
                                 </div>
                               </div>
