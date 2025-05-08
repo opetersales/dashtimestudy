@@ -8,7 +8,7 @@ import Settings from './pages/Settings';
 import History from './pages/History';
 import NotFound from './pages/NotFound';
 import TimeStudies from './pages/TimeStudies';
-import TimeStudyDetail from './pages/TimeStudyDetail';
+import TimeStudyDetail from './features/timeStudy/TimeStudyDetail';
 import './App.css';
 
 function App() {
