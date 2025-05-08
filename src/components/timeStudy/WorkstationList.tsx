@@ -211,8 +211,14 @@ export function WorkstationList({
                                     {activity.type}
                                   </span>
                                   <span>PF&D: {(activity.pfdFactor * 100).toFixed(0)}%</span>
-                                  <span>{activity.collections.length} coleta(s): {activity.collections.map(c => 
-                                      typeof c === 'object' ? c.value.toFixed(2) : c.toFixed(2)).join(', ')}s</span>
+                                  <span>
+                                    {activity.collections.length} coleta(s): {activity.collections.map(c => {
+                                      // Ensure we properly handle the collection value type
+                                      const value = typeof c === 'object' ? c.value : c;
+                                      // Convert to number before using toFixed
+                                      return Number(value).toFixed(2);
+                                    }).join(', ')}s
+                                  </span>
                                   <span 
                                     className="tooltip-hover rounded-full px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900/70 dark:text-green-300"
                                     title="Tempo médio normal (sem PF&D)"
