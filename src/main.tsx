@@ -12,7 +12,7 @@ import './components/ui/custom-styles.css';
 // Pages
 import Index from './pages/Index.tsx';
 import TimeStudies from './pages/TimeStudies.tsx';
-import TimeStudyDetail from './features/timeStudy/TimeStudyDetail.tsx';
+import TimeStudyDetail from './pages/TimeStudyDetail.tsx';
 import Documents from './pages/Documents.tsx';
 import History from './pages/History.tsx';
 import Settings from './pages/Settings.tsx';

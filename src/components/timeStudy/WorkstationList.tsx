@@ -31,13 +31,50 @@ export function WorkstationList({
   const { toast } = useToast();
   const [expandedWorkstations, setExpandedWorkstations] = useState<Record<string, boolean>>({});
   const [isEditingActivity, setIsEditingActivity] = useState(false);
+  const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
   const [currentWorkstationId, setCurrentWorkstationId] = useState<string | null>(null);
+
+  const handleAddActivity = (workstationId: string) => {
+    setCurrentWorkstationId(workstationId);
+    setIsAddingActivity(true);
+  };
 
   const handleEditActivity = (workstationId: string, activity: Activity) => {
     setCurrentActivity(activity);
     setCurrentWorkstationId(workstationId);
     setIsEditingActivity(true);
+  };
+
+  const handleCreateActivity = (newActivity: Activity) => {
+    if (!currentWorkstationId) return;
+
+    const updatedLines = study.productionLines.map(line => ({
+      ...line,
+      workstations: line.workstations.map(ws => {
+        if (ws.id === currentWorkstationId) {
+          return {
+            ...ws,
+            activities: [...ws.activities, newActivity]
+          };
+        }
+        return ws;
+      })
+    }));
+
+    onStudyUpdate({
+      ...study,
+      productionLines: updatedLines,
+    });
+  
+    updateHistory('create', `Adicionada atividade "${newActivity.description}"`);
+    toast({
+      description: "Atividade adicionada com sucesso."
+    });
+
+    setCurrentActivity(null);
+    setCurrentWorkstationId(null);
+    setIsAddingActivity(false);
   };
 
   const handleUpdateActivity = (updatedActivity: Activity) => {
@@ -174,6 +211,7 @@ export function WorkstationList({
                       variant="outline"
                       size="sm"
                       className="dark:bg-primary/10 dark:hover:bg-primary/20"
+                      onClick={() => handleAddActivity(workstation.id)}
                     >
                       <Plus className="mr-2 h-3 w-3" />
                       Adicionar Atividade
@@ -211,7 +249,9 @@ export function WorkstationList({
                                     {activity.type}
                                   </span>
                                   <span>PF&D: {(activity.pfdFactor * 100).toFixed(0)}%</span>
-                                  <span>
+                                  <span className="cursor-pointer hover:underline" 
+                                    onClick={() => handleEditActivity(workstation.id, activity)}
+                                    title="Clique para editar as coletas">
                                     {activity.collections.length} coleta(s): {activity.collections.map(c => {
                                       // Ensure we properly handle the collection value type
                                       const value = typeof c === 'object' ? c.value : c;
@@ -285,6 +325,22 @@ export function WorkstationList({
               }}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para adicionar atividade */}
+      <Dialog open={isAddingActivity} onOpenChange={setIsAddingActivity}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Adicionar Atividade</DialogTitle>
+          </DialogHeader>
+          <ActivityForm
+            onSubmit={handleCreateActivity}
+            onCancel={() => {
+              setCurrentWorkstationId(null);
+              setIsAddingActivity(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
     </>
