@@ -4,7 +4,7 @@ import { Edit, Trash2, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ProductionLine, Workstation, TimeStudy } from '@/utils/types';
+import { ProductionLine, Workstation, TimeStudy, Activity } from '@/utils/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { WorkstationForm } from './WorkstationForm';
 import { useToast } from '@/components/ui/use-toast';
@@ -36,8 +36,10 @@ export function AccordionLineItem({
   updateHistory,
 }: AccordionLineItemProps) {
   const [selectedWorkstation, setSelectedWorkstation] = useState<Workstation | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [isEditingWorkstation, setIsEditingWorkstation] = useState(false);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [isEditingActivity, setIsEditingActivity] = useState(false);
   const { toast } = useToast();
 
   const handleEditWorkstation = (workstation: Workstation) => {
@@ -137,6 +139,12 @@ export function AccordionLineItem({
     }
   };
 
+  const handleEditActivity = (workstation: Workstation, activity: Activity) => {
+    setSelectedWorkstation(workstation);
+    setSelectedActivity(activity);
+    setIsEditingActivity(true);
+  };
+
   const handleActivitySubmit = (activityData: any) => {
     if (!selectedWorkstation) return;
 
@@ -211,6 +219,104 @@ export function AccordionLineItem({
     setIsAddingActivity(false);
   };
 
+  const handleUpdateActivity = (activityData: Activity) => {
+    if (!selectedWorkstation || !selectedActivity) return;
+
+    const updatedLines = study.productionLines.map(l => {
+      if (l.id === line.id) {
+        return {
+          ...l,
+          workstations: l.workstations.map(ws => {
+            if (ws.id === selectedWorkstation.id) {
+              // Calculate averageNormalTime
+              let averageNormalTime = 0;
+              if (activityData.collections && activityData.collections.length > 0) {
+                const totalTime = activityData.collections.reduce((sum, collection) => {
+                  const value = typeof collection === 'object' ? collection.value : collection;
+                  return sum + Number(value);
+                }, 0);
+                averageNormalTime = totalTime / activityData.collections.length;
+              }
+              
+              // Calculate cycleTime with PF&D factor
+              const cycleTime = averageNormalTime * (1 + (activityData.pfdFactor || 0));
+              
+              return {
+                ...ws,
+                activities: ws.activities.map(act => {
+                  if (act.id === selectedActivity.id) {
+                    return {
+                      ...activityData,
+                      averageNormalTime,
+                      cycleTime
+                    };
+                  }
+                  return act;
+                })
+              };
+            }
+            return ws;
+          }),
+        };
+      }
+      return l;
+    });
+
+    const updatedStudy = {
+      ...study,
+      productionLines: updatedLines,
+      updatedAt: new Date().toISOString(),
+    };
+
+    onStudyUpdate(updatedStudy);
+    updateHistory('update', `Atualizada atividade "${activityData.description}" no posto de trabalho ${selectedWorkstation.number}`);
+
+    toast({
+      title: 'Atividade atualizada',
+      description: 'A atividade foi atualizada com sucesso.',
+    });
+
+    setSelectedWorkstation(null);
+    setSelectedActivity(null);
+    setIsEditingActivity(false);
+  };
+
+  const handleDeleteActivity = (workstationId: string, activityId: string, activityName: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir a atividade "${activityName}"? Esta ação não pode ser desfeita.`)) {
+      const updatedLines = study.productionLines.map(l => {
+        if (l.id === line.id) {
+          return {
+            ...l,
+            workstations: l.workstations.map(ws => {
+              if (ws.id === workstationId) {
+                return {
+                  ...ws,
+                  activities: ws.activities.filter(act => act.id !== activityId)
+                };
+              }
+              return ws;
+            }),
+          };
+        }
+        return l;
+      });
+
+      const updatedStudy = {
+        ...study,
+        productionLines: updatedLines,
+        updatedAt: new Date().toISOString(),
+      };
+
+      onStudyUpdate(updatedStudy);
+      updateHistory('delete', `Removida atividade "${activityName}"`);
+
+      toast({
+        title: 'Atividade removida',
+        description: 'A atividade foi removida com sucesso.',
+      });
+    }
+  };
+
   return (
     <>
       <Collapsible open={isExpanded} onOpenChange={onToggle} className="border rounded-lg">
@@ -271,12 +377,48 @@ export function AccordionLineItem({
                       {workstation.activities && workstation.activities.length > 0 ? (
                         <div className="space-y-2">
                           <h4 className="font-medium text-sm">Atividades:</h4>
-                          <ul className="space-y-1">
+                          <ul className="space-y-2">
                             {workstation.activities.map(activity => (
-                              <li key={activity.id} className="text-sm">
+                              <li key={activity.id} className="text-sm p-3 border rounded-md hover:bg-muted/20 transition-colors">
                                 <div className="flex justify-between">
-                                  <span>{activity.description}</span>
-                                  <span className="text-muted-foreground">{activity.type}</span>
+                                  <div>
+                                    <div className="font-medium">{activity.description}</div>
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
+                                      <span className="rounded-full px-2 py-0.5 bg-muted">{activity.type}</span>
+                                      <span>PF&D: {(activity.pfdFactor * 100).toFixed(0)}%</span>
+                                      <span>Média: {Number(activity.averageNormalTime).toFixed(2)}s</span>
+                                      <span>T. Ciclo: {Number(activity.cycleTime).toFixed(2)}s</span>
+                                    </div>
+                                    <div className="mt-1.5 text-xs">
+                                      <span className="font-medium">Coletas: </span>
+                                      {activity.collections.map((c, idx) => {
+                                        const value = typeof c === 'object' ? c.value : c;
+                                        return (
+                                          <span key={idx} className="inline-block mx-1">
+                                            {Number(value).toFixed(2)}s{idx < activity.collections.length - 1 ? ',' : ''}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-1 flex-shrink-0">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      onClick={() => handleEditActivity(workstation, activity)}
+                                      className="h-8 w-8"
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      onClick={() => handleDeleteActivity(workstation.id, activity.id, activity.description)}
+                                      className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
                                 </div>
                               </li>
                             ))}
@@ -336,7 +478,7 @@ export function AccordionLineItem({
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para adicionar atividade (usado apenas quando onAddActivity não é fornecido) */}
+      {/* Dialog para adicionar atividade */}
       {!onAddActivity && (
         <Dialog open={isAddingActivity} onOpenChange={setIsAddingActivity}>
           <DialogContent className="sm:max-w-[600px]">
@@ -353,6 +495,26 @@ export function AccordionLineItem({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Dialog para editar atividade */}
+      <Dialog open={isEditingActivity} onOpenChange={setIsEditingActivity}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Editar Atividade</DialogTitle>
+          </DialogHeader>
+          {selectedActivity && (
+            <ActivityForm
+              initialData={selectedActivity}
+              onSubmit={handleUpdateActivity}
+              onCancel={() => {
+                setSelectedWorkstation(null);
+                setSelectedActivity(null);
+                setIsEditingActivity(false);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

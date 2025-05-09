@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -18,10 +19,28 @@ export function Breadcrumbs({ className }: BreadcrumbsProps) {
   const location = useLocation();
   const pathSegments = location.pathname.split('/').filter(Boolean);
   
-  // Map paths to their corresponding routes in the application
-  const getPathUrl = (segment: string, index: number): string => {
+  // Get URL for each path segment
+  const getPathUrl = (index: number): string => {
     const path = `/${pathSegments.slice(0, index + 1).join('/')}`;
     return path;
+  };
+
+  // Map path segments to their correct route
+  const getCorrectPath = (segment: string, index: number): string => {
+    // Mapping special cases to ensure correct navigation
+    if (segment === 'study' && index === 0 && pathSegments.length > 1) {
+      // When we're in a study detail page like /study/123, 
+      // clicking on "study" should go to /studies
+      return '/studies';
+    }
+    if (segment === 'gbo' && index === 0 && pathSegments.length > 1) {
+      // When we're in a GBO detail page like /gbo/123, 
+      // clicking on "gbo" should go to /gbos
+      return '/gbos';
+    }
+    
+    // Default behavior for other paths
+    return getPathUrl(index);
   };
 
   // Map segment names to more readable display names
@@ -62,7 +81,7 @@ export function Breadcrumbs({ className }: BreadcrumbsProps) {
         
         {pathSegments.map((segment, index) => {
           const isLast = index === pathSegments.length - 1;
-          const url = getPathUrl(segment, index);
+          const url = getCorrectPath(segment, index);
           const displayName = getDisplayName(segment);
           
           return (

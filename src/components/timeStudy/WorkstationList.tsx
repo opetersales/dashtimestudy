@@ -8,10 +8,11 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Plus } from 'lucide-react';
+import { Edit, Trash2, Plus, Clock, RotateCw } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActivityForm } from './ActivityForm';
+import { Badge } from '@/components/ui/badge';
 
 interface WorkstationListProps {
   workstations: Workstation[];
@@ -34,6 +35,7 @@ export function WorkstationList({
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
   const [currentWorkstationId, setCurrentWorkstationId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleAddActivity = (workstationId: string) => {
     setCurrentWorkstationId(workstationId);
@@ -48,91 +50,169 @@ export function WorkstationList({
 
   const handleCreateActivity = (newActivity: Activity) => {
     if (!currentWorkstationId) return;
+    setIsLoading(true);
 
-    const updatedLines = study.productionLines.map(line => ({
-      ...line,
-      workstations: line.workstations.map(ws => {
-        if (ws.id === currentWorkstationId) {
-          return {
-            ...ws,
-            activities: [...ws.activities, newActivity]
-          };
-        }
-        return ws;
-      })
-    }));
+    try {
+      // Calculate averageNormalTime
+      let averageNormalTime = 0;
+      if (newActivity.collections && newActivity.collections.length > 0) {
+        const totalTime = newActivity.collections.reduce((sum, collection) => {
+          const value = typeof collection === 'object' ? collection.value : collection;
+          return sum + Number(value);
+        }, 0);
+        averageNormalTime = totalTime / newActivity.collections.length;
+      }
+      
+      // Calculate cycleTime with PF&D factor
+      const cycleTime = averageNormalTime * (1 + (newActivity.pfdFactor || 0));
+      
+      // Add calculated values
+      const activityWithCalculations = {
+        ...newActivity,
+        averageNormalTime,
+        cycleTime
+      };
 
-    onStudyUpdate({
-      ...study,
-      productionLines: updatedLines,
-    });
-  
-    updateHistory('create', `Adicionada atividade "${newActivity.description}"`);
-    toast({
-      description: "Atividade adicionada com sucesso."
-    });
+      const updatedLines = study.productionLines.map(line => ({
+        ...line,
+        workstations: line.workstations.map(ws => {
+          if (ws.id === currentWorkstationId) {
+            return {
+              ...ws,
+              activities: [...ws.activities, activityWithCalculations]
+            };
+          }
+          return ws;
+        })
+      }));
 
-    setCurrentActivity(null);
-    setCurrentWorkstationId(null);
-    setIsAddingActivity(false);
+      onStudyUpdate({
+        ...study,
+        productionLines: updatedLines,
+        updatedAt: new Date().toISOString()
+      });
+    
+      updateHistory('create', `Adicionada atividade "${newActivity.description}"`);
+      toast({
+        description: "Atividade adicionada com sucesso."
+      });
+    } catch (error) {
+      console.error("Erro ao adicionar atividade:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao adicionar atividade."
+      });
+    } finally {
+      setIsLoading(false);
+      setCurrentActivity(null);
+      setCurrentWorkstationId(null);
+      setIsAddingActivity(false);
+    }
   };
 
   const handleUpdateActivity = (updatedActivity: Activity) => {
     if (!currentWorkstationId) return;
+    setIsLoading(true);
 
-    const updatedLines = study.productionLines.map(line => ({
-      ...line,
-      workstations: line.workstations.map(ws => {
-        if (ws.id === currentWorkstationId) {
-          return {
-            ...ws,
-            activities: ws.activities.map(act => 
-              act.id === updatedActivity.id ? updatedActivity : act
-            )
-          };
-        }
-        return ws;
-      })
-    }));
+    try {
+      // Calculate averageNormalTime
+      let averageNormalTime = 0;
+      if (updatedActivity.collections && updatedActivity.collections.length > 0) {
+        const totalTime = updatedActivity.collections.reduce((sum, collection) => {
+          const value = typeof collection === 'object' ? collection.value : collection;
+          return sum + Number(value);
+        }, 0);
+        averageNormalTime = totalTime / updatedActivity.collections.length;
+      }
+      
+      // Calculate cycleTime with PF&D factor
+      const cycleTime = averageNormalTime * (1 + (updatedActivity.pfdFactor || 0));
+      
+      // Add calculated values
+      const activityWithCalculations = {
+        ...updatedActivity,
+        averageNormalTime,
+        cycleTime
+      };
 
-    onStudyUpdate({
-      ...study,
-      productionLines: updatedLines,
-    });
-  
-    updateHistory('update', `Atualizada atividade "${updatedActivity.description}"`);
-    toast({
-      description: "Atividade atualizada com sucesso."
-    });
+      const updatedLines = study.productionLines.map(line => ({
+        ...line,
+        workstations: line.workstations.map(ws => {
+          if (ws.id === currentWorkstationId) {
+            return {
+              ...ws,
+              activities: ws.activities.map(act => 
+                act.id === updatedActivity.id ? activityWithCalculations : act
+              )
+            };
+          }
+          return ws;
+        })
+      }));
 
-    setCurrentActivity(null);
-    setCurrentWorkstationId(null);
-    setIsEditingActivity(false);
+      onStudyUpdate({
+        ...study,
+        productionLines: updatedLines,
+        updatedAt: new Date().toISOString()
+      });
+    
+      updateHistory('update', `Atualizada atividade "${updatedActivity.description}"`);
+      toast({
+        description: "Atividade atualizada com sucesso."
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar atividade:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao atualizar atividade."
+      });
+    } finally {
+      setIsLoading(false);
+      setCurrentActivity(null);
+      setCurrentWorkstationId(null);
+      setIsEditingActivity(false);
+    }
   };
 
   const handleDeleteActivity = (workstationId: string, activityId: string, activityName: string) => {
-    const updatedLines = study.productionLines.map(line => ({
-      ...line,
-      workstations: line.workstations.map(ws => {
-        if (ws.id === workstationId) {
-          return {
-            ...ws,
-            activities: ws.activities.filter(act => act.id !== activityId)
-          };
-        }
-        return ws;
-      })
-    }));
+    if (!confirm(`Tem certeza que deseja excluir a atividade "${activityName}"?`)) {
+      return;
+    }
 
-    onStudyUpdate({
-      ...study,
-      productionLines: updatedLines,
-    });
-  
-    updateHistory('delete', `Removida atividade "${activityName}"`);
-    toast({
-      description: "Atividade removida com sucesso."
-    });
+    setIsLoading(true);
+    try {
+      const updatedLines = study.productionLines.map(line => ({
+        ...line,
+        workstations: line.workstations.map(ws => {
+          if (ws.id === workstationId) {
+            return {
+              ...ws,
+              activities: ws.activities.filter(act => act.id !== activityId)
+            };
+          }
+          return ws;
+        })
+      }));
+
+      onStudyUpdate({
+        ...study,
+        productionLines: updatedLines,
+        updatedAt: new Date().toISOString()
+      });
+    
+      updateHistory('delete', `Removida atividade "${activityName}"`);
+      toast({
+        description: "Atividade removida com sucesso."
+      });
+    } catch (error) {
+      console.error("Erro ao remover atividade:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao remover atividade."
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const calculateAverageTime = (activity: Activity): number => {
@@ -151,6 +231,13 @@ export function WorkstationList({
   const calculateCycleTime = (activity: Activity): number => {
     const averageTime = calculateAverageTime(activity);
     return averageTime * (1 + (activity.pfdFactor || 0));
+  };
+
+  const toggleWorkstationExpansion = (workstationId: string) => {
+    setExpandedWorkstations(prev => ({
+      ...prev,
+      [workstationId]: !prev[workstationId]
+    }));
   };
 
   return (
@@ -186,7 +273,10 @@ export function WorkstationList({
                 ${isBottleneck ? 'border-destructive/60 dark:border-destructive/60' : ''}
               `}
             >
-              <AccordionTrigger className="hover:bg-muted/50 dark:hover:bg-primary/10 px-4 rounded-md">
+              <AccordionTrigger 
+                className="hover:bg-muted/50 dark:hover:bg-primary/10 px-4 rounded-md"
+                onClick={() => toggleWorkstationExpansion(workstation.id)}
+              >
                 <div className="flex items-center">
                   <span className="font-medium flex items-center">
                     {isBottleneck && (
@@ -235,49 +325,54 @@ export function WorkstationList({
                         return (
                           <div
                             key={activity.id}
-                            className="p-3 border rounded-md dark:bg-card/80 dark:border-primary/10"
+                            className="p-3 border rounded-md dark:bg-card/80 dark:border-primary/10 hover:bg-muted/20 transition-colors"
                           >
                             <div className="flex justify-between items-start">
                               <div className="w-full">
                                 <p className="font-medium">📋 {activity.description}</p>
                                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                                  <span className={`px-2 py-0.5 rounded-full ${
+                                  <Badge variant={
                                     activity.type === 'Manual' 
-                                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/70 dark:text-blue-300'
-                                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/70 dark:text-amber-300'
-                                  }`}>
+                                      ? 'default' 
+                                      : 'secondary'
+                                  }>
                                     {activity.type}
-                                  </span>
+                                  </Badge>
                                   <span>PF&D: {(activity.pfdFactor * 100).toFixed(0)}%</span>
-                                  <span className="cursor-pointer hover:underline" 
-                                    onClick={() => handleEditActivity(workstation.id, activity)}
+                                  <span className="cursor-pointer hover:underline flex items-center gap-1" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditActivity(workstation.id, activity);
+                                    }}
                                     title="Clique para editar as coletas">
-                                    {activity.collections.length} coleta(s): {activity.collections.map(c => {
+                                    <Clock className="h-3 w-3" />
+                                    {activity.collections.length} coleta(s): {activity.collections.map((c, idx) => {
                                       // Ensure we properly handle the collection value type
                                       const value = typeof c === 'object' ? c.value : c;
                                       // Convert to number before using toFixed
-                                      return Number(value).toFixed(2);
-                                    }).join(', ')}s
+                                      return (
+                                        <span key={idx} className="inline-block">
+                                          {Number(value).toFixed(2)}s{idx < activity.collections.length - 1 ? ', ' : ''}
+                                        </span>
+                                      );
+                                    })}
                                   </span>
-                                  <span 
-                                    className="tooltip-hover rounded-full px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900/70 dark:text-green-300"
-                                    title="Tempo médio normal (sem PF&D)"
-                                  >
+                                  <Badge variant="outline" className="bg-green-100/10">
                                     T.M.: {Number(activity.averageNormalTime).toFixed(2)}s
-                                  </span>
-                                  <span 
-                                    className="tooltip-hover rounded-full px-2 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900/70 dark:text-purple-300"
-                                    title="Tempo de ciclo (com PF&D aplicado)"
-                                  >
+                                  </Badge>
+                                  <Badge variant="outline" className="bg-purple-100/10">
                                     T.C.: {Number(activity.cycleTime).toFixed(2)}s
-                                  </span>
+                                  </Badge>
                                 </div>
                               </div>
                               <div className="flex gap-1 ml-2 flex-shrink-0">
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  onClick={() => handleEditActivity(workstation.id, activity)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditActivity(workstation.id, activity);
+                                  }}
                                   className="dark:hover:bg-primary/20"
                                 >
                                   <Edit className="h-3 w-3" />
@@ -285,7 +380,10 @@ export function WorkstationList({
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  onClick={() => handleDeleteActivity(workstation.id, activity.id, activity.description)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteActivity(workstation.id, activity.id, activity.description);
+                                  }}
                                   className="dark:hover:bg-destructive/20 dark:text-destructive/70"
                                 >
                                   <Trash2 className="h-3 w-3" />
