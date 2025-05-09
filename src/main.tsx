@@ -9,6 +9,10 @@ import App from './App.tsx';
 import './index.css';
 import './components/ui/custom-styles.css';
 
+// Auth
+import Auth from './pages/Auth.tsx';
+import { AuthWrapper } from './components/layout/AuthWrapper.tsx';
+
 // Pages
 import Index from './pages/Index.tsx';
 import TimeStudies from './pages/TimeStudies.tsx';
@@ -36,54 +40,64 @@ const queryClient = new QueryClient({
 
 const router = createBrowserRouter([
   {
+    path: "/auth",
+    element: <Auth />,
+  },
+  {
     path: "/",
-    element: <App />,
+    element: <AuthWrapper />,
     errorElement: <NotFound />,
     children: [
       {
-        index: true,
-        element: <Index />,
-      },
-      {
-        path: "studies",
-        element: <TimeStudies />,
-      },
-      {
-        path: "study/:id",
-        element: <TimeStudyDetail />,
-      },
-      {
-        path: "documents",
-        element: <Documents />,
-      },
-      {
-        path: "history",
-        element: <History />,
-      },
-      {
-        path: "settings",
-        element: <Settings />,
-      },
-      {
-        path: "planning",
-        element: <Planning />,
-      },
-      {
-        path: "gbos",
-        element: <GBOs />,
-      },
-      {
-        path: "gbo/:id",
-        element: <GboDetail />,
-      },
-      {
-        path: "operators",
-        element: <Operators />,
-      },
-      {
-        path: "analysis",
-        element: <AnaliseAtividades />,
-      },
+        path: "",
+        element: <App />,
+        children: [
+          {
+            index: true,
+            element: <Index />,
+          },
+          {
+            path: "studies",
+            element: <TimeStudies />,
+          },
+          {
+            path: "study/:id",
+            element: <TimeStudyDetail />,
+          },
+          {
+            path: "documents",
+            element: <Documents />,
+          },
+          {
+            path: "history",
+            element: <History />,
+          },
+          {
+            path: "settings",
+            element: <Settings />,
+          },
+          {
+            path: "planning",
+            element: <Planning />,
+          },
+          {
+            path: "gbos",
+            element: <GBOs />,
+          },
+          {
+            path: "gbo/:id",
+            element: <GboDetail />,
+          },
+          {
+            path: "operators",
+            element: <Operators />,
+          },
+          {
+            path: "analysis",
+            element: <AnaliseAtividades />,
+          },
+        ],
+      }
     ],
   },
 ]);

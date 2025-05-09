@@ -8,7 +8,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, FileText, Filter, ArrowUp, ArrowDown } from 'lucide-react';
 import { TimeStudyForm } from '@/components/timeStudy/TimeStudyForm';
 import { TimeStudy } from '@/utils/types';
-import { loadFromLocalStorage, saveToLocalStorage, getCurrentUser } from '@/services/localStorage';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -23,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentProfile } from '@/services/auth';
 
 const TimeStudies: React.FC = () => {
   const [studies, setStudies] = useState<TimeStudy[]>([]);
@@ -35,17 +36,63 @@ const TimeStudies: React.FC = () => {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const user = getCurrentProfile();
 
   useEffect(() => {
-    // Load studies from localStorage
-    const loadedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
-    setStudies(loadedStudies);
-    applyFiltersAndSort(loadedStudies, statusFilter, sortOrder);
+    // Carregar estudos do Supabase
+    const loadStudies = async () => {
+      if (!user) return;
 
+      try {
+        const { data, error } = await supabase
+          .from('time_studies')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error("Erro ao carregar estudos:", error);
+          toast({
+            title: "Erro ao carregar estudos",
+            description: error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (data) {
+          // Converter dados do Supabase para o formato TimeStudy
+          const mappedStudies = data.map(study => ({
+            id: study.id,
+            client: study.client,
+            modelName: study.model_name,
+            studyDate: study.study_date,
+            responsiblePerson: study.responsible_person || '',
+            monthlyDemand: study.monthly_demand || 0,
+            workingDays: study.working_days || 22,
+            dailyDemand: study.daily_demand || 0,
+            productionLines: [],
+            shifts: [],
+            createdAt: study.created_at,
+            updatedAt: study.updated_at,
+            createdBy: user.name,
+            version: study.version || '1.0',
+            status: study.status || 'draft'
+          }));
+          
+          setStudies(mappedStudies);
+          applyFiltersAndSort(mappedStudies, statusFilter, sortOrder);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar estudos:", error);
+      }
+    };
+
+    loadStudies();
+
+    // Adicionar um listener para atualizar os estudos quando houver mudanças
     const handleDashboardUpdate = () => {
-      const refreshedStudies = loadFromLocalStorage<TimeStudy[]>('timeStudies', []);
-      setStudies(refreshedStudies);
-      applyFiltersAndSort(refreshedStudies, statusFilter, sortOrder);
+      loadStudies();
     };
 
     window.addEventListener('dashboardUpdate', handleDashboardUpdate);
@@ -53,7 +100,7 @@ const TimeStudies: React.FC = () => {
     return () => {
       window.removeEventListener('dashboardUpdate', handleDashboardUpdate);
     };
-  }, []);
+  }, [user, toast, statusFilter, sortOrder]);
 
   // Aplicar filtros e ordenação
   const applyFiltersAndSort = (
@@ -92,25 +139,22 @@ const TimeStudies: React.FC = () => {
     applyFiltersAndSort(studies, statusFilter, newOrder);
   };
 
-  const getUserName = () => {
-    const userData = loadFromLocalStorage('userData', { name: 'Usuário' });
-    return userData.name;
-  };
-
-  const updateHistory = (action: string, details: string, studyName: string) => {
-    const history = loadFromLocalStorage<any[]>('history', []);
-    const newHistoryItem = {
-      id: `hist-${Date.now()}`,
-      date: new Date().toISOString(),
-      user: getUserName(),
-      action: action,
-      details: details,
-      entityType: 'timeStudy',
-      entityId: `study-${Date.now()}`,
-      entityName: studyName,
-    };
-    history.unshift(newHistoryItem);
-    saveToLocalStorage('history', history);
+  // Atualizar histórico
+  const updateHistory = async (action: string, details: string, studyName: string) => {
+    if (!user) return;
+    
+    try {
+      await supabase.from('history').insert([{
+        user_id: user.id,
+        action: action,
+        details: details,
+        entity_type: 'timeStudy',
+        entity_id: Date.now().toString(),
+        entity_name: studyName
+      }]);
+    } catch (error) {
+      console.error('Erro ao registrar histórico:', error);
+    }
   };
   
   const handleOpenStudy = (id: string) => {
@@ -124,28 +168,47 @@ const TimeStudies: React.FC = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDeleteStudy = () => {
-    if (!studyToDelete) return;
+  const confirmDeleteStudy = async () => {
+    if (!studyToDelete || !user) return;
     
-    const updatedStudies = studies.filter(s => s.id !== studyToDelete.id);
-    setStudies(updatedStudies);
-    saveToLocalStorage('timeStudies', updatedStudies);
-    
-    updateHistory(
-      'delete',
-      `Exclusão do estudo ${studyToDelete.client} - ${studyToDelete.modelName}`,
-      `${studyToDelete.client} - ${studyToDelete.modelName}`
-    );
-    
-    toast({
-      title: "Estudo excluído",
-      description: `${studyToDelete.client} - ${studyToDelete.modelName} foi excluído com sucesso.`,
-    });
-    
-    setIsDeleteDialogOpen(false);
-    setStudyToDelete(null);
-    
-    window.dispatchEvent(new Event('dashboardUpdate'));
+    try {
+      const { error } = await supabase
+        .from('time_studies')
+        .delete()
+        .eq('id', studyToDelete.id)
+        .eq('user_id', user.id);
+      
+      if (error) {
+        toast({
+          title: "Erro ao excluir estudo",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const updatedStudies = studies.filter(s => s.id !== studyToDelete.id);
+      setStudies(updatedStudies);
+      applyFiltersAndSort(updatedStudies, statusFilter, sortOrder);
+      
+      updateHistory(
+        'delete',
+        `Exclusão do estudo ${studyToDelete.client} - ${studyToDelete.modelName}`,
+        `${studyToDelete.client} - ${studyToDelete.modelName}`
+      );
+      
+      toast({
+        title: "Estudo excluído",
+        description: `${studyToDelete.client} - ${studyToDelete.modelName} foi excluído com sucesso.`,
+      });
+      
+      setIsDeleteDialogOpen(false);
+      setStudyToDelete(null);
+      
+      window.dispatchEvent(new Event('dashboardUpdate'));
+    } catch (error) {
+      console.error("Erro ao excluir estudo:", error);
+    }
   };
 
   const handleExportStudy = (e: React.MouseEvent, study: TimeStudy) => {
@@ -175,86 +238,100 @@ const TimeStudies: React.FC = () => {
     );
   };
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = async (data: any) => {
+    if (!user) return;
+    
     // Processar a data para garantir que seja string
     const studyDate = data.studyDate instanceof Date
       ? data.studyDate.toISOString()
       : new Date(data.studyDate).toISOString();
     
-    if (selectedStudy) {
-      const updatedStudy: TimeStudy = {
-        ...selectedStudy,
-        client: data.client || selectedStudy.client,
-        modelName: data.modelName || selectedStudy.modelName,
-        studyDate: studyDate,
-        responsiblePerson: data.responsiblePerson || selectedStudy.responsiblePerson,
-        monthlyDemand: data.monthlyDemand || selectedStudy.monthlyDemand,
-        workingDays: data.workingDays || selectedStudy.workingDays,
-        dailyDemand: data.monthlyDemand && data.workingDays 
-          ? Math.round(data.monthlyDemand / data.workingDays) 
-          : selectedStudy.dailyDemand,
-        shifts: data.shifts || selectedStudy.shifts,
-        updatedAt: new Date().toISOString(),
-      };
+    try {
+      if (selectedStudy) {
+        // Atualizar estudo existente
+        const { error } = await supabase
+          .from('time_studies')
+          .update({
+            client: data.client,
+            model_name: data.modelName,
+            study_date: studyDate,
+            responsible_person: data.responsiblePerson,
+            monthly_demand: data.monthlyDemand,
+            working_days: data.workingDays,
+            daily_demand: data.monthlyDemand && data.workingDays 
+              ? Math.round(data.monthlyDemand / data.workingDays) 
+              : 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedStudy.id)
+          .eq('user_id', user.id);
+        
+        if (error) {
+          toast({
+            title: "Erro ao atualizar estudo",
+            description: error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({
+          title: "Estudo atualizado",
+          description: `${data.client} - ${data.modelName} foi atualizado com sucesso.`,
+        });
+        
+        updateHistory(
+          'update',
+          `Atualização do estudo ${data.client} - ${data.modelName}`,
+          `${data.client} - ${data.modelName}`
+        );
+      } else {
+        // Criar novo estudo
+        const { error } = await supabase
+          .from('time_studies')
+          .insert([{
+            user_id: user.id,
+            client: data.client,
+            model_name: data.modelName,
+            study_date: studyDate,
+            responsible_person: data.responsiblePerson,
+            monthly_demand: data.monthlyDemand,
+            working_days: data.workingDays,
+            daily_demand: data.monthlyDemand && data.workingDays 
+              ? Math.round(data.monthlyDemand / data.workingDays) 
+              : 0,
+            status: 'draft',
+            version: '1.0'
+          }]);
+        
+        if (error) {
+          toast({
+            title: "Erro ao criar estudo",
+            description: error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({
+          title: "Estudo criado",
+          description: `${data.client} - ${data.modelName} foi criado como rascunho. Adicione linhas e postos de trabalho.`,
+        });
+        
+        updateHistory(
+          'create',
+          `Criação do estudo de tempo ${data.client} - ${data.modelName}`,
+          `${data.client} - ${data.modelName}`
+        );
+      }
       
-      const updatedStudies = studies.map(s => 
-        s.id === updatedStudy.id ? updatedStudy : s
-      );
+      setIsFormOpen(false);
+      setSelectedStudy(null);
       
-      setStudies(updatedStudies);
-      saveToLocalStorage('timeStudies', updatedStudies);
-      
-      toast({
-        title: "Estudo atualizado",
-        description: `${updatedStudy.client} - ${updatedStudy.modelName} foi atualizado com sucesso.`,
-      });
-      
-      updateHistory(
-        'update',
-        `Atualização do estudo ${updatedStudy.client} - ${updatedStudy.modelName}`,
-        `${updatedStudy.client} - ${updatedStudy.modelName}`
-      );
-    } else {
-      const newStudy: TimeStudy = {
-        id: `study-${Date.now()}`,
-        client: data.client || '',
-        modelName: data.modelName || '',
-        studyDate: studyDate,
-        responsiblePerson: data.responsiblePerson || '',
-        monthlyDemand: data.monthlyDemand || 0,
-        workingDays: data.workingDays || 22,
-        dailyDemand: data.monthlyDemand && data.workingDays 
-          ? Math.round(data.monthlyDemand / data.workingDays) 
-          : 0,
-        shifts: data.shifts || [],
-        productionLines: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: getUserName(),
-        version: '1.0',
-        status: 'draft',
-      };
-      
-      const updatedStudies = [...studies, newStudy];
-      setStudies(updatedStudies);
-      saveToLocalStorage('timeStudies', updatedStudies);
-      
-      toast({
-        title: "Estudo criado",
-        description: `${newStudy.client} - ${newStudy.modelName} foi criado como rascunho. Adicione linhas e postos de trabalho.`,
-      });
-      
-      updateHistory(
-        'create',
-        `Criação do estudo de tempo ${newStudy.client} - ${newStudy.modelName}`,
-        `${newStudy.client} - ${newStudy.modelName}`
-      );
+      window.dispatchEvent(new Event('dashboardUpdate'));
+    } catch (error) {
+      console.error("Erro ao salvar estudo:", error);
     }
-    
-    setIsFormOpen(false);
-    setSelectedStudy(null);
-    
-    window.dispatchEvent(new Event('dashboardUpdate'));
   };
 
   // Função auxiliar para obter a cor do badge baseado no status
