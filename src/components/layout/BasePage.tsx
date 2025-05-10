@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Header } from './Header';
+import Header from './Header';  // Changed from import { Header } from './Header'
 import { Sidebar } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { cn } from '@/lib/utils';
