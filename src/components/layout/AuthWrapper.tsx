@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { isAuthenticated, getCurrentProfile } from '@/services/auth';
 import { Profile } from '@/types/auth';
+import { Loader } from 'lucide-react';
 
 export const AuthWrapper = () => {
   const [user, setUser] = useState<Profile | null>(null);
@@ -23,22 +24,28 @@ export const AuthWrapper = () => {
       }
     };
 
-    checkAuth();
+    const timer = setTimeout(() => {
+      checkAuth();
+    }, 500); // Pequeno delay para mostrar a animação de carregamento
     
     // Adicionar listener para atualizar o estado do usuário quando mudar
     window.addEventListener('storage', checkAuth);
     
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('storage', checkAuth);
     };
   }, [navigate]);
 
   if (isChecking) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-500">Carregando...</p>
+          <div className="flex justify-center items-center mb-4">
+            <Loader size={40} className="text-primary animate-spin" />
+          </div>
+          <h2 className="text-xl font-medium text-gray-800">Carregando...</h2>
+          <p className="text-sm text-gray-500 mt-1">Verificando suas credenciais</p>
         </div>
       </div>
     );

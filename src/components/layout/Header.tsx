@@ -1,76 +1,54 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Moon, Sun, LogOut, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getCurrentProfile, logoutUser } from '@/services/auth';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { logoutUser, getCurrentProfile } from '@/services/auth';
+import { useToast } from '@/components/ui/use-toast';
+import { User, LogOut } from 'lucide-react';
 
-interface HeaderProps {
-  sidebarCollapsed: boolean;
-  onToggleTheme: () => void;
-  isDarkTheme: boolean;
-}
-
-export const Header = ({ sidebarCollapsed, onToggleTheme, isDarkTheme }: HeaderProps) => {
+const Header = () => {
   const navigate = useNavigate();
-  const user = getCurrentProfile();
-  
+  const { toast } = useToast();
+  const currentUser = getCurrentProfile();
+
   const handleLogout = () => {
     logoutUser();
+    toast({
+      title: "Logout realizado",
+      description: "Você foi desconectado com sucesso."
+    });
     navigate('/auth');
   };
-  
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-  
+
   return (
-    <header className="border-b bg-background sticky top-0 z-30">
-      <div className="flex h-16 items-center justify-between px-4">
-        <div>
-          <Link to="/" className="flex items-center">
-            <span className="text-xl font-bold">STime</span>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onToggleTheme}>
-            {isDarkTheme ? <Sun /> : <Moon />}
+    <header className="bg-white border-b border-gray-200 shadow-sm py-3 px-4 flex justify-between items-center">
+      <h1 className="text-xl font-bold text-primary">STime</h1>
+      
+      {currentUser && (
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <div className="bg-primary/10 text-primary rounded-full p-1.5">
+              <User size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-medium">{currentUser.name}</p>
+              <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+            </div>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleLogout}
+            className="flex items-center"
+          >
+            <LogOut className="mr-1 h-4 w-4" />
+            Sair
           </Button>
-
-          {user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" forceMount>
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                  </div>
-                </div>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sair</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
-      </div>
+      )}
     </header>
   );
 };
+
+export default Header;
