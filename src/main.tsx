@@ -1,112 +1,41 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import App from './App.tsx';
-
-// Global Styles
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import './index.css';
-import './components/ui/custom-styles.css';
+import App from './App';
+import Auth from './pages/Auth';
+import { AuthWrapper } from './components/layout/AuthWrapper';
+import TimeStudies from './pages/TimeStudies';
+import TimeStudyDetail from './features/timeStudy/TimeStudyDetail';
+import Index from './pages/Index';
+import NotFound from './pages/NotFound';
 
-// Auth
-import Auth from './pages/Auth.tsx';
-import { AuthWrapper } from './components/layout/AuthWrapper.tsx';
-
-// Pages
-import Index from './pages/Index.tsx';
-import TimeStudies from './pages/TimeStudies.tsx';
-import TimeStudyDetail from './features/timeStudy/TimeStudyDetail.tsx';
-import Documents from './pages/Documents.tsx';
-import History from './pages/History.tsx';
-import Settings from './pages/Settings.tsx';
-import Planning from './pages/Planning.tsx';
-import GBOs from './pages/GBOs.tsx';
-import GboDetail from './pages/GboDetail.tsx';
-import Operators from './pages/Operators.tsx';
-import AnaliseAtividades from './pages/AnaliseAtividades.tsx';
-import { Toaster } from "@/components/ui/toaster";
-import NotFound from './pages/NotFound.tsx';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 60, // 1 hour
-      retry: 1,
-    },
-  },
-});
-
-const router = createBrowserRouter([
-  {
-    path: "/auth",
-    element: <Auth />,
-  },
-  {
-    path: "/",
-    element: <AuthWrapper />,
-    errorElement: <NotFound />,
-    children: [
-      {
-        path: "",
-        element: <App />,
-        children: [
-          {
-            index: true,
-            element: <Index />,
-          },
-          {
-            path: "studies",
-            element: <TimeStudies />,
-          },
-          {
-            path: "study/:id",
-            element: <TimeStudyDetail />,
-          },
-          {
-            path: "documents",
-            element: <Documents />,
-          },
-          {
-            path: "history",
-            element: <History />,
-          },
-          {
-            path: "settings",
-            element: <Settings />,
-          },
-          {
-            path: "planning",
-            element: <Planning />,
-          },
-          {
-            path: "gbos",
-            element: <GBOs />,
-          },
-          {
-            path: "gbo/:id",
-            element: <GboDetail />,
-          },
-          {
-            path: "operators",
-            element: <Operators />,
-          },
-          {
-            path: "analysis",
-            element: <AnaliseAtividades />,
-          },
-        ],
-      }
-    ],
-  },
-]);
+// Import de outros componentes necessários
+import { Toaster } from '@/components/ui/toaster';
+import { ThemeProvider } from '@/components/ThemeProvider';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+    <ThemeProvider defaultTheme="light" storageKey="stime-theme">
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<App />}>
+            <Route path="/auth" element={<Auth />} />
+            
+            {/* Rotas protegidas */}
+            <Route element={<AuthWrapper />}>
+              <Route index element={<Index />} />
+              <Route path="/studies" element={<TimeStudies />} />
+              <Route path="/study/:id" element={<TimeStudyDetail />} />
+              {/* Outras rotas protegidas aqui */}
+            </Route>
+            
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
       <Toaster />
-    </QueryClientProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );

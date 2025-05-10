@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BasePage } from '@/components/layout/BasePage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -66,15 +67,15 @@ const TimeStudies: React.FC = () => {
             id: study.id,
             client: study.client,
             modelName: study.model_name,
-            studyDate: study.study_date,
+            studyDate: study.study_date || new Date().toISOString(),
             responsiblePerson: study.responsible_person || '',
             monthlyDemand: study.monthly_demand || 0,
             workingDays: study.working_days || 22,
             dailyDemand: study.daily_demand || 0,
             productionLines: [],
             shifts: [],
-            createdAt: study.created_at,
-            updatedAt: study.updated_at,
+            createdAt: study.created_at || new Date().toISOString(),
+            updatedAt: study.updated_at || new Date().toISOString(),
             createdBy: user.name,
             version: study.version || '1.0',
             status: study.status || 'draft'
