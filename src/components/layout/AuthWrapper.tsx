@@ -4,6 +4,7 @@ import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { isAuthenticated, getCurrentProfile } from '@/services/auth';
 import { Profile } from '@/types/auth';
 import { Loader } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export const AuthWrapper = () => {
   const [user, setUser] = useState<Profile | null>(null);
@@ -23,6 +24,18 @@ export const AuthWrapper = () => {
         navigate('/auth');
       }
     };
+    
+    // Configurar listener para mudanças de autenticação do Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          navigate('/auth');
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          checkAuth();
+        }
+      }
+    );
 
     const timer = setTimeout(() => {
       checkAuth();
@@ -34,6 +47,7 @@ export const AuthWrapper = () => {
     return () => {
       clearTimeout(timer);
       window.removeEventListener('storage', checkAuth);
+      subscription.unsubscribe();
     };
   }, [navigate]);
 

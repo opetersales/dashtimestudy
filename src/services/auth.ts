@@ -4,24 +4,37 @@ import { Profile } from '@/types/auth';
 import { saveToLocalStorage, loadFromLocalStorage, removeFromLocalStorage } from './localStorage';
 
 // Função para fazer login
-export const loginUser = async (email: string): Promise<Profile | null> => {
+export const loginUser = async (email: string, password: string): Promise<Profile | null> => {
   try {
-    // Verificar se o usuário já existe
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', email)
-      .single();
+    // Autenticar com email e senha
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
     
-    if (error && error.code !== 'PGRST116') {
-      console.error('Erro ao buscar perfil:', error);
+    if (authError) {
+      console.error('Erro ao fazer login:', authError);
       return null;
     }
-
-    if (profiles) {
-      // Salva o usuário no localStorage
-      saveToLocalStorage('currentUser', profiles);
-      return profiles;
+    
+    if (authData.user) {
+      // Buscar o perfil do usuário
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .single();
+      
+      if (profileError) {
+        console.error('Erro ao buscar perfil:', profileError);
+        return null;
+      }
+      
+      if (profile) {
+        // Salva o usuário no localStorage
+        saveToLocalStorage('currentUser', profile);
+        return profile;
+      }
     }
     
     return null;
@@ -32,35 +45,57 @@ export const loginUser = async (email: string): Promise<Profile | null> => {
 };
 
 // Função para cadastrar novo usuário
-export const registerUser = async (name: string, email: string): Promise<Profile | null> => {
+export const registerUser = async (name: string, email: string, password: string): Promise<Profile | null> => {
   try {
-    // Verificar se o usuário já existe
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', email)
-      .single();
+    // Criar conta com autenticação
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name
+        }
+      }
+    });
     
-    if (existingUser) {
-      return null; // Usuário já existe
-    }
-
-    // Inserir novo usuário
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert([{ name, email }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Erro ao cadastrar usuário:', error);
+    if (authError) {
+      console.error('Erro ao cadastrar usuário:', authError);
       return null;
     }
-
-    if (data) {
-      // Salva o usuário no localStorage
-      saveToLocalStorage('currentUser', data);
-      return data;
+    
+    if (authData.user) {
+      // Verificar se o usuário já existe
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .single();
+      
+      if (existingUser) {
+        return existingUser; // Usuário já existe
+      }
+      
+      // Inserir novo usuário
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([{ 
+          id: authData.user.id,
+          name, 
+          email 
+        }])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Erro ao cadastrar usuário:', error);
+        return null;
+      }
+      
+      if (data) {
+        // Salva o usuário no localStorage
+        saveToLocalStorage('currentUser', data);
+        return data;
+      }
     }
     
     return null;
@@ -71,7 +106,8 @@ export const registerUser = async (name: string, email: string): Promise<Profile
 };
 
 // Função para fazer logout
-export const logoutUser = (): void => {
+export const logoutUser = async (): Promise<void> => {
+  await supabase.auth.signOut();
   removeFromLocalStorage('currentUser');
 };
 

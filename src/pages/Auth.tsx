@@ -19,6 +19,8 @@ const loginSchema = z.object({
   email: z.string()
     .min(1, 'O e-mail é obrigatório')
     .email('Formato de e-mail inválido'),
+  password: z.string()
+    .min(1, 'A senha é obrigatória'),
 });
 
 // Schema de validação para o cadastro
@@ -29,16 +31,26 @@ const registerSchema = z.object({
   email: z.string()
     .min(1, 'O e-mail é obrigatório')
     .email('Formato de e-mail inválido'),
+  password: z.string()
+    .min(6, 'A senha deve ter pelo menos 6 caracteres')
+    .max(100, 'A senha não pode exceder 100 caracteres'),
+  confirmPassword: z.string()
+    .min(1, 'Confirme sua senha'),
   acceptTerms: z.boolean()
     .refine(val => val === true, {
       message: 'Você deve aceitar os termos para continuar',
     }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "As senhas não coincidem",
+  path: ["confirmPassword"],
 });
 
 const Auth = () => {
   // Gerenciamento de estado
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -47,6 +59,7 @@ const Auth = () => {
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
+      password: '',
     },
   });
 
@@ -55,6 +68,8 @@ const Auth = () => {
     defaultValues: {
       name: '',
       email: '',
+      password: '',
+      confirmPassword: '',
       acceptTerms: false,
     },
   });
@@ -66,11 +81,20 @@ const Auth = () => {
     }
   }, [navigate]);
 
+  // Alternar visibilidade da senha
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+  
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
   // Função de login
   const handleLogin = async (values) => {
     setIsLoading(true);
     try {
-      const user = await loginUser(values.email);
+      const user = await loginUser(values.email, values.password);
       if (user) {
         toast({
           title: "Login bem-sucedido",
@@ -79,8 +103,8 @@ const Auth = () => {
         navigate('/');
       } else {
         toast({
-          title: "E-mail não encontrado",
-          description: "Verifique seu e-mail ou crie uma nova conta.",
+          title: "Erro no login",
+          description: "Credenciais inválidas. Verifique seu e-mail e senha.",
           variant: "destructive",
         });
       }
@@ -100,7 +124,7 @@ const Auth = () => {
   const handleRegister = async (values) => {
     setIsLoading(true);
     try {
-      const user = await registerUser(values.name, values.email);
+      const user = await registerUser(values.name, values.email, values.password);
       if (user) {
         toast({
           title: "Cadastro realizado com sucesso",
@@ -109,8 +133,8 @@ const Auth = () => {
         navigate('/');
       } else {
         toast({
-          title: "E-mail já cadastrado",
-          description: "Este e-mail já está em uso. Por favor, use outro ou faça login.",
+          title: "Erro no cadastro",
+          description: "Este e-mail já está em uso ou ocorreu um erro. Por favor, tente novamente.",
           variant: "destructive",
         });
       }
@@ -141,7 +165,7 @@ const Auth = () => {
           </CardTitle>
           <CardDescription>
             {activeTab === 'login' 
-              ? 'Digite seu e-mail para acessar o sistema' 
+              ? 'Digite seu e-mail e senha para acessar o sistema' 
               : 'Preencha os campos abaixo para criar sua conta'}
           </CardDescription>
         </CardHeader>
@@ -177,6 +201,35 @@ const Auth = () => {
                             disabled={isLoading}
                             {...field} 
                           />
+                        </FormControl>
+                        <FormMessage className="text-xs text-[#EF4444]" />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-[#1F2937]">Senha</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Digite sua senha" 
+                              className="h-11 focus:ring-2 focus:ring-primary focus:border-transparent transition-all pr-10"
+                              disabled={isLoading}
+                              {...field} 
+                            />
+                            <button 
+                              type="button" 
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              onClick={togglePasswordVisibility}
+                            >
+                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage className="text-xs text-[#EF4444]" />
                       </FormItem>
@@ -246,6 +299,64 @@ const Auth = () => {
                             disabled={isLoading}
                             {...field} 
                           />
+                        </FormControl>
+                        <FormMessage className="text-xs text-[#EF4444]" />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-[#1F2937]">Senha</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Digite sua senha" 
+                              className="h-11 focus:ring-2 focus:ring-primary focus:border-transparent transition-all pr-10"
+                              disabled={isLoading}
+                              {...field} 
+                            />
+                            <button 
+                              type="button" 
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              onClick={togglePasswordVisibility}
+                            >
+                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-xs text-[#EF4444]" />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-[#1F2937]">Confirmar senha</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showConfirmPassword ? "text" : "password"}
+                              placeholder="Confirme sua senha" 
+                              className="h-11 focus:ring-2 focus:ring-primary focus:border-transparent transition-all pr-10"
+                              disabled={isLoading}
+                              {...field} 
+                            />
+                            <button 
+                              type="button" 
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              onClick={toggleConfirmPasswordVisibility}
+                            >
+                              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage className="text-xs text-[#EF4444]" />
                       </FormItem>
