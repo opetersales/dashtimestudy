@@ -14,7 +14,7 @@ export const loginUser = async (email: string, password: string): Promise<Profil
     
     if (authError) {
       console.error('Erro ao fazer login:', authError);
-      return null;
+      throw authError;
     }
     
     if (authData.user) {
@@ -22,12 +22,12 @@ export const loginUser = async (email: string, password: string): Promise<Profil
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('email', email)
+        .eq('id', authData.user.id)
         .single();
       
       if (profileError) {
         console.error('Erro ao buscar perfil:', profileError);
-        return null;
+        throw profileError;
       }
       
       if (profile) {
@@ -40,7 +40,7 @@ export const loginUser = async (email: string, password: string): Promise<Profil
     return null;
   } catch (error) {
     console.error('Erro ao fazer login:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -60,48 +60,43 @@ export const registerUser = async (name: string, email: string, password: string
     
     if (authError) {
       console.error('Erro ao cadastrar usuário:', authError);
-      return null;
+      throw authError;
     }
     
     if (authData.user) {
-      // Verificar se o usuário já existe
-      const { data: existingUser } = await supabase
+      // O perfil será criado automaticamente pelo trigger no Supabase
+      // Mas vamos buscar para confirmar que foi criado
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('email', email)
+        .eq('id', authData.user.id)
         .single();
       
-      if (existingUser) {
-        return existingUser; // Usuário já existe
-      }
-      
-      // Inserir novo usuário
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert([{ 
+      if (profileError) {
+        // Pode haver um pequeno atraso na criação do perfil pelo trigger
+        // Vamos criar um objeto de perfil com os dados disponíveis
+        const newProfile: Profile = {
           id: authData.user.id,
-          name, 
-          email 
-        }])
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Erro ao cadastrar usuário:', error);
-        return null;
+          name,
+          email
+        };
+        
+        // Salva o usuário no localStorage
+        saveToLocalStorage('currentUser', newProfile);
+        return newProfile;
       }
       
-      if (data) {
+      if (profile) {
         // Salva o usuário no localStorage
-        saveToLocalStorage('currentUser', data);
-        return data;
+        saveToLocalStorage('currentUser', profile);
+        return profile;
       }
     }
     
     return null;
   } catch (error) {
     console.error('Erro ao cadastrar usuário:', error);
-    return null;
+    throw error;
   }
 };
 

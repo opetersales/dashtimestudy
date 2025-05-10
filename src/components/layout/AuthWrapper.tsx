@@ -5,6 +5,7 @@ import { isAuthenticated, getCurrentProfile } from '@/services/auth';
 import { Profile } from '@/types/auth';
 import { Loader } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { saveToLocalStorage } from '@/services/localStorage';
 
 export const AuthWrapper = () => {
   const [user, setUser] = useState<Profile | null>(null);
@@ -12,41 +13,64 @@ export const AuthWrapper = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Verificar se o usuário está autenticado
-    const checkAuth = () => {
-      const isAuth = isAuthenticated();
-      const currentUser = getCurrentProfile();
+    // Verificar a sessão atual do Supabase
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
       
-      setUser(currentUser);
-      setIsChecking(false);
-      
-      if (!isAuth) {
-        navigate('/auth');
+      if (data.session) {
+        // Temos uma sessão válida, buscar o perfil
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.session.user.id)
+          .single();
+        
+        if (profileData && !error) {
+          saveToLocalStorage('currentUser', profileData);
+          setUser(profileData);
+        } else {
+          // Não encontramos um perfil, fazer logout
+          await supabase.auth.signOut();
+          setUser(null);
+          navigate('/auth');
+        }
+      } else {
+        setUser(null);
       }
+      
+      setIsChecking(false);
     };
     
     // Configurar listener para mudanças de autenticação do Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
+      async (event, session) => {
+        console.log('Auth state changed:', event);
+        
         if (event === 'SIGNED_OUT') {
           setUser(null);
           navigate('/auth');
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          checkAuth();
+          if (session) {
+            // Buscar o perfil do usuário quando ele fizer login
+            const { data: profileData, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (profileData && !error) {
+              saveToLocalStorage('currentUser', profileData);
+              setUser(profileData);
+            }
+          }
         }
       }
     );
 
-    const timer = setTimeout(() => {
-      checkAuth();
-    }, 500); // Pequeno delay para mostrar a animação de carregamento
-    
-    // Adicionar listener para atualizar o estado do usuário quando mudar
-    window.addEventListener('storage', checkAuth);
+    // Verificar sessão inicial
+    checkSession();
     
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('storage', checkAuth);
       subscription.unsubscribe();
     };
   }, [navigate]);

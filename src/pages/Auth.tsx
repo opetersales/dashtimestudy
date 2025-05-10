@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { supabase } from '@/integrations/supabase/client';
 
 // Schema de validação para o login
 const loginSchema = z.object({
@@ -51,6 +52,7 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -90,29 +92,47 @@ const Auth = () => {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
+  // Limpar mensagens de erro quando mudar de tab
+  useEffect(() => {
+    setErrorMessage(null);
+  }, [activeTab]);
+
+  // Função para traduzir erros do Supabase
+  const getErrorMessage = (error: any): string => {
+    console.log('Error details:', error);
+    
+    // Erros comuns do Supabase
+    switch (error.message) {
+      case 'Invalid login credentials':
+        return 'Credenciais inválidas. Verifique seu email e senha.';
+      case 'Email not confirmed':
+        return 'Email não confirmado. Verifique sua caixa de entrada.';
+      case 'User already registered':
+      case 'Email address is already registered':
+        return 'Este email já está em uso. Tente fazer login.';
+      default:
+        return error.message || 'Ocorreu um erro. Por favor, tente novamente.';
+    }
+  };
+
   // Função de login
   const handleLogin = async (values) => {
     setIsLoading(true);
+    setErrorMessage(null);
+    
     try {
-      const user = await loginUser(values.email, values.password);
-      if (user) {
-        toast({
-          title: "Login bem-sucedido",
-          description: `Bem-vindo de volta, ${user.name}!`,
-        });
-        navigate('/');
-      } else {
-        toast({
-          title: "Erro no login",
-          description: "Credenciais inválidas. Verifique seu e-mail e senha.",
-          variant: "destructive",
-        });
-      }
+      await loginUser(values.email, values.password);
+      toast({
+        title: "Login bem-sucedido",
+        description: "Bem-vindo de volta ao sistema!",
+      });
+      navigate('/');
     } catch (error) {
       console.error('Erro ao fazer login:', error);
+      setErrorMessage(getErrorMessage(error));
       toast({
         title: "Erro no login",
-        description: "Ocorreu um erro ao tentar fazer login. Tente novamente.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -123,26 +143,33 @@ const Auth = () => {
   // Função de cadastro
   const handleRegister = async (values) => {
     setIsLoading(true);
+    setErrorMessage(null);
+    
     try {
-      const user = await registerUser(values.name, values.email, values.password);
-      if (user) {
+      await registerUser(values.name, values.email, values.password);
+      
+      toast({
+        title: "Cadastro realizado com sucesso",
+        description: `Seja bem-vindo, ${values.name}!`,
+      });
+      
+      // Verificar se o email precisa ser confirmado
+      const { data } = await supabase.auth.getSession();
+      
+      if (!data.session) {
         toast({
-          title: "Cadastro realizado com sucesso",
-          description: `Seja bem-vindo, ${user.name}!`,
+          title: "Verificação de email necessária",
+          description: "Um email de confirmação foi enviado para o seu endereço. Por favor, verifique sua caixa de entrada.",
         });
-        navigate('/');
       } else {
-        toast({
-          title: "Erro no cadastro",
-          description: "Este e-mail já está em uso ou ocorreu um erro. Por favor, tente novamente.",
-          variant: "destructive",
-        });
+        navigate('/');
       }
     } catch (error) {
       console.error('Erro ao cadastrar:', error);
+      setErrorMessage(getErrorMessage(error));
       toast({
         title: "Erro no cadastro",
-        description: "Ocorreu um erro ao tentar cadastrar. Tente novamente.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -152,7 +179,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] p-4">
-      {/* Logo do sistema (placeholder) */}
+      {/* Logo do sistema */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-primary">STime</h1>
         <p className="text-muted-foreground text-center">Sistema de Estudo de Tempos</p>
@@ -169,6 +196,13 @@ const Auth = () => {
               : 'Preencha os campos abaixo para criar sua conta'}
           </CardDescription>
         </CardHeader>
+        
+        {/* Exibir mensagens de erro */}
+        {errorMessage && (
+          <div className="mx-6 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md mb-4">
+            <p className="text-sm">{errorMessage}</p>
+          </div>
+        )}
         
         <Tabs 
           value={activeTab} 
