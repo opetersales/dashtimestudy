@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -126,7 +125,7 @@ const Auth = () => {
         title: "Login bem-sucedido",
         description: "Bem-vindo de volta ao sistema!",
       });
-      navigate('/');
+      navigate('/'); // Garantir redirecionamento para a página principal
     } catch (error) {
       console.error('Erro ao fazer login:', error);
       setErrorMessage(getErrorMessage(error));
