@@ -6,11 +6,13 @@ import { Profile } from '@/types/auth';
 import { Loader } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { saveToLocalStorage } from '@/services/localStorage';
+import { useToast } from '@/components/ui/use-toast';
 
 export const AuthWrapper = () => {
   const [user, setUser] = useState<Profile | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     // Verificar a sessão atual do Supabase
@@ -23,16 +25,35 @@ export const AuthWrapper = () => {
           .from('profiles')
           .select('*')
           .eq('id', data.session.user.id)
-          .single();
+          .maybeSingle(); // Alterado de .single() para .maybeSingle()
         
         if (profileData && !error) {
           saveToLocalStorage('currentUser', profileData);
           setUser(profileData);
         } else {
-          // Não encontramos um perfil, fazer logout
-          await supabase.auth.signOut();
-          setUser(null);
-          navigate('/auth');
+          // Criar um perfil básico baseado nos dados do usuário
+          const basicProfile: Profile = {
+            id: data.session.user.id,
+            name: data.session.user.user_metadata.name || data.session.user.email?.split('@')[0] || 'Usuário',
+            email: data.session.user.email || ''
+          };
+          
+          saveToLocalStorage('currentUser', basicProfile);
+          setUser(basicProfile);
+          
+          // Tentar inserir o perfil no banco de dados
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert(basicProfile);
+          
+          if (insertError) {
+            console.error('Erro ao criar perfil:', insertError);
+            toast({
+              title: "Aviso",
+              description: "Seu perfil foi criado localmente, mas não foi possível salvá-lo no servidor.",
+              variant: "destructive"
+            });
+          }
         }
       } else {
         setUser(null);
@@ -56,11 +77,35 @@ export const AuthWrapper = () => {
               .from('profiles')
               .select('*')
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle(); // Alterado de .single() para .maybeSingle()
             
             if (profileData && !error) {
               saveToLocalStorage('currentUser', profileData);
               setUser(profileData);
+            } else {
+              // Criar um perfil básico baseado nos dados do usuário
+              const basicProfile: Profile = {
+                id: session.user.id,
+                name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
+                email: session.user.email || ''
+              };
+              
+              saveToLocalStorage('currentUser', basicProfile);
+              setUser(basicProfile);
+              
+              // Tentar inserir o perfil no banco de dados
+              const { error: insertError } = await supabase
+                .from('profiles')
+                .insert(basicProfile);
+              
+              if (insertError) {
+                console.error('Erro ao criar perfil:', insertError);
+                toast({
+                  title: "Aviso",
+                  description: "Seu perfil foi criado localmente, mas não foi possível salvá-lo no servidor.",
+                  variant: "destructive"
+                });
+              }
             }
           }
         }
@@ -73,7 +118,7 @@ export const AuthWrapper = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, toast]);
 
   if (isChecking) {
     return (

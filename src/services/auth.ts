@@ -23,7 +23,7 @@ export const loginUser = async (email: string, password: string): Promise<Profil
         .from('profiles')
         .select('*')
         .eq('id', authData.user.id)
-        .single();
+        .maybeSingle(); // Alterado de .single() para .maybeSingle()
       
       if (profileError) {
         console.error('Erro ao buscar perfil:', profileError);
@@ -34,6 +34,17 @@ export const loginUser = async (email: string, password: string): Promise<Profil
         // Salva o usuário no localStorage
         saveToLocalStorage('currentUser', profile);
         return profile;
+      } else {
+        // Caso o perfil não seja encontrado, vamos criar um com os dados disponíveis
+        const newProfile: Profile = {
+          id: authData.user.id,
+          name: authData.user.user_metadata.name || email.split('@')[0],
+          email: authData.user.email || email
+        };
+        
+        // Salva o usuário no localStorage
+        saveToLocalStorage('currentUser', newProfile);
+        return newProfile;
       }
     }
     
